@@ -1,0 +1,274 @@
+{
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "schemes": [
+    "http"
+  ],
+  "swagger": "2.0",
+  "info": {
+    "description": "Simple Gin API",
+    "title": "Documentation of our Books API",
+    "contact": {
+      "name": "Test User",
+      "url": "http://github.com/",
+      "email": "some_email@example.com"
+    },
+    "version": "1.0.0"
+  },
+  "host": "localhost:8080",
+  "basePath": "/",
+  "paths": {
+    "/books": {
+      "get": {
+        "description": "Returns list of books",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "books"
+        ],
+        "operationId": "listBooks",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Book"
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "description": "Adds a new book",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "books"
+        ],
+        "operationId": "addBook",
+        "responses": {
+          "201": {
+            "description": "Successful operation",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Book"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          }
+        }
+      }
+    },
+    "/books/search": {
+      "get": {
+        "description": "Filters list of books by tag",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "books"
+        ],
+        "operationId": "searchBooks",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "tag to filter on",
+            "name": "tag",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Book"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/books/{id}": {
+      "put": {
+        "description": "Update an existing book",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "books"
+        ],
+        "operationId": "updateBook",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "ID of the book",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Book"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "404": {
+            "description": "book not found"
+          }
+        }
+      },
+      "delete": {
+        "description": "Delete an existing book",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "books"
+        ],
+        "operationId": "deleteBook",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "ID of the book",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Book": {
+      "description": "Book represents a book",
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "author",
+        "publisher",
+        "published_at"
+      ],
+      "properties": {
+        "author": {
+          "description": "the book author's name",
+          "type": "string",
+          "minLength": 3,
+          "x-go-name": "Author"
+        },
+        "id": {
+          "description": "the id for this book",
+          "type": "string",
+          "minimum": 1,
+          "x-go-name": "ID"
+        },
+        "name": {
+          "description": "the name of the book",
+          "type": "string",
+          "minLength": 3,
+          "x-go-name": "Name"
+        },
+        "published_at": {
+          "$ref": "#/definitions/PublishedDate"
+        },
+        "publisher": {
+          "description": "The publisher's name",
+          "type": "string",
+          "minLength": 3,
+          "x-go-name": "Publisher"
+        },
+        "review": {
+          "description": "Score review",
+          "type": "number",
+          "format": "float",
+          "x-go-name": "Review"
+        },
+        "submission_date": {
+          "description": "The day the book was added",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "SubmissionDate"
+        },
+        "tags": {
+          "description": "the associated tags with this book",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-go-name": "Tags"
+        }
+      },
+      "x-go-package": "github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/model"
+    },
+    "PublishedDate": {
+      "description": "PublishedDate Represents the month and year of when the book was published",
+      "type": "object",
+      "required": [
+        "month",
+        "year"
+      ],
+      "properties": {
+        "month": {
+          "description": "the month of the year",
+          "type": "string",
+          "x-go-name": "Month"
+        },
+        "year": {
+          "description": "the month of the year",
+          "type": "string",
+          "minLength": 1,
+          "x-go-name": "Year"
+        }
+      },
+      "x-go-package": "github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/model"
+    }
+  },
+  "securityDefinitions": {
+    "basic": {
+      "type": "basic"
+    }
+  }
+}
