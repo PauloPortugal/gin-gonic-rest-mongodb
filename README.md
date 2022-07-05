@@ -12,7 +12,20 @@ This example is a simple RESTful API to easily manage books read.
 go run pkg/main.go
 ```
 
-##CURL commands to interact with the REST API
+## Swagger OpenAPI specification
+
+* To generate the swagger spec file
+```shell
+swagger generate spec -o ./swagger.json
+```
+
+* To have the API specification served from the Swagger UI
+```shell
+swagger serve --port 8081 --path docs -F swagger ./swagger.json
+```
+
+
+## CURL commands to interact with the REST API
 ### Get all the books
 ```shell
 curl -X GET 'localhost:8080/books'
