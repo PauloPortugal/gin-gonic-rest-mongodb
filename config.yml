@@ -2,7 +2,8 @@ server:
   port: 8080
 
 mongodb:
-  dbname: "test"
+  dbname: "demo"
+  dbcollection: "books"
   dbuser: "user_name"
   dbpassword: "user_pass"
   dbhost: "localhost:27017"
