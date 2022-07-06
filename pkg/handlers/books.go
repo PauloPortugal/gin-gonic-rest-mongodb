@@ -28,6 +28,13 @@ func init() {
 // - application/json
 // produces:
 // - application/json
+// parameters:
+// - name: book
+//   in: body
+//   name: Book
+//   description: The new book to create
+//   schema:
+//         "$ref": "#/definitions/Book"
 // responses:
 //     '201':
 //         description: Successful operation
@@ -118,6 +125,13 @@ func SearchBooks(ctx *gin.Context) {
 // - application/json
 // produces:
 // - application/json
+// parameters:
+// - name: book
+//   in: body
+//   name: Book
+//   description: The new book to create
+//   schema:
+//         "$ref": "#/definitions/Book"
 // responses:
 //     '200':
 //         description: Successful operation

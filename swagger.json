@@ -59,6 +59,16 @@
           "books"
         ],
         "operationId": "addBook",
+        "parameters": [
+          {
+            "description": "The new book to create",
+            "name": "Book",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/Book"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": "Successful operation",
@@ -186,30 +196,32 @@
       "description": "Book represents a book",
       "type": "object",
       "required": [
-        "id",
         "name",
         "author",
         "publisher",
-        "published_at"
+        "published_at",
+        "review"
       ],
       "properties": {
         "author": {
           "description": "the book author's name",
           "type": "string",
           "minLength": 3,
-          "x-go-name": "Author"
+          "x-go-name": "Author",
+          "example": "Andrew Smith"
         },
         "id": {
           "description": "the id for this book",
           "type": "string",
-          "minimum": 1,
           "x-go-name": "ID"
         },
         "name": {
           "description": "the name of the book",
           "type": "string",
           "minLength": 3,
-          "x-go-name": "Name"
+          "uniqueItems": true,
+          "x-go-name": "Name",
+          "example": "Moondust"
         },
         "published_at": {
           "$ref": "#/definitions/PublishedDate"
@@ -218,13 +230,17 @@
           "description": "The publisher's name",
           "type": "string",
           "minLength": 3,
-          "x-go-name": "Publisher"
+          "x-go-name": "Publisher",
+          "example": "Bloomsbury Publishing PLC"
         },
         "review": {
           "description": "Score review",
           "type": "number",
           "format": "float",
-          "x-go-name": "Review"
+          "maximum": 5,
+          "minimum": 0,
+          "x-go-name": "Review",
+          "example": 4.6
         },
         "submission_date": {
           "description": "The day the book was added",
@@ -238,7 +254,12 @@
           "items": {
             "type": "string"
           },
-          "x-go-name": "Tags"
+          "x-go-name": "Tags",
+          "example": [
+            "space exploration",
+            "astronauts",
+            "nasa"
+          ]
         }
       },
       "x-go-package": "github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/model"
@@ -254,13 +275,15 @@
         "month": {
           "description": "the month of the year",
           "type": "string",
-          "x-go-name": "Month"
+          "x-go-name": "Month",
+          "example": "July"
         },
         "year": {
           "description": "the month of the year",
           "type": "string",
           "minLength": 1,
-          "x-go-name": "Year"
+          "x-go-name": "Year",
+          "example": "2009"
         }
       },
       "x-go-package": "github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/model"
