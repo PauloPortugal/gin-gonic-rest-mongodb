@@ -1,24 +1,31 @@
 package handlers
 
 import (
-	"encoding/json"
-	"io/ioutil"
+	"context"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/model"
 	"github.com/gin-gonic/gin"
-	"github.com/rs/xid"
+	"github.com/spf13/viper"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var books []model.Book
+// BooksHandler provides a struct to wrap the api around
+type BooksHandler struct {
+	cfg *viper.Viper
+	col *mongo.Collection
+	ctx context.Context
+}
 
-func init() {
-	books = make([]model.Book, 0)
-
-	file, _ := ioutil.ReadFile("books.json")
-	_ = json.Unmarshal(file, &books)
+func New(ctx context.Context, cfg *viper.Viper, col *mongo.Collection) *BooksHandler {
+	return &BooksHandler{
+		ctx: ctx,
+		cfg: cfg,
+		col: col,
+	}
 }
 
 // swagger:operation POST /books books addBook
@@ -28,6 +35,13 @@ func init() {
 // - application/json
 // produces:
 // - application/json
+// parameters:
+// - name: book
+//   in: body
+//   name: Book
+//   description: The new book to create
+//   schema:
+//         "$ref": "#/definitions/Book"
 // responses:
 //     '201':
 //         description: Successful operation
@@ -37,7 +51,9 @@ func init() {
 //                "$ref": "#/definitions/Book"
 //     '400':
 //         description: Invalid input
-func NewBook(ctx *gin.Context) {
+//     '500':
+//         description: internal server error
+func (handler *BooksHandler) NewBook(ctx *gin.Context) {
 	var book model.Book
 	if err := ctx.ShouldBindJSON(&book); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -46,9 +62,15 @@ func NewBook(ctx *gin.Context) {
 		return
 	}
 
-	book.ID = xid.New().String()
+	book.ID = primitive.NewObjectID()
 	book.SubmissionDate = time.Now()
-	books = append(books, book)
+	_, err := handler.col.InsertOne(handler.ctx, book)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
 	ctx.JSON(http.StatusCreated, book)
 }
 
@@ -66,8 +88,24 @@ func NewBook(ctx *gin.Context) {
 //           type: array
 //           items:
 //                "$ref": "#/definitions/Book"
-func ListBooks(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, books)
+//     '500':
+//         description: internal server error
+func (handler *BooksHandler) ListBooks(ctx *gin.Context) {
+	books := make([]model.Book, 0)
+	cur, err := handler.col.Find(handler.ctx, bson.M{})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	if err = cur.All(handler.ctx, &books); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+	}
+
+	ctx.JSON(http.StatusOK, &books)
 }
 
 // swagger:operation GET /books/search books searchBooks
@@ -90,19 +128,25 @@ func ListBooks(ctx *gin.Context) {
 //           type: array
 //           items:
 //                "$ref": "#/definitions/Book"
-func SearchBooks(ctx *gin.Context) {
+func (handler *BooksHandler) SearchBooks(ctx *gin.Context) {
 	tag := ctx.Query("tag")
-	listOfBooks := make([]model.Book, 0)
-
-	for _, b := range books {
-		for _, t := range b.Tags {
-			if strings.Contains(t, tag) {
-				listOfBooks = append(listOfBooks, b)
-			}
-		}
+	books := make([]model.Book, 0)
+	cur, err := handler.col.Find(handler.ctx, bson.M{
+		"tags": tag,
+	})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	if err = cur.All(handler.ctx, &books); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
 	}
 
-	ctx.JSON(http.StatusOK, listOfBooks)
+	ctx.JSON(http.StatusOK, books)
 }
 
 // swagger:operation PUT /books/{id} books updateBook
@@ -118,6 +162,13 @@ func SearchBooks(ctx *gin.Context) {
 // - application/json
 // produces:
 // - application/json
+// parameters:
+// - name: book
+//   in: body
+//   name: Book
+//   description: The new book to create
+//   schema:
+//         "$ref": "#/definitions/Book"
 // responses:
 //     '200':
 //         description: Successful operation
@@ -129,7 +180,9 @@ func SearchBooks(ctx *gin.Context) {
 //         description: Invalid input
 //     '404':
 //         description: book not found
-func UpdateBook(ctx *gin.Context) {
+//     '500':
+//         description: internal server error
+func (handler *BooksHandler) UpdateBook(ctx *gin.Context) {
 	id := ctx.Param("id")
 	var book model.Book
 	if err := ctx.ShouldBindJSON(&book); err != nil {
@@ -139,17 +192,24 @@ func UpdateBook(ctx *gin.Context) {
 		return
 	}
 
-	found := false
-	for i, v := range books {
-		if v.ID == id {
-			found = true
-			book.ID = id
-			book.SubmissionDate = books[i].SubmissionDate
-			books[i] = book
-		}
+	objID, _ := primitive.ObjectIDFromHex(id)
+	res, err := handler.col.UpdateOne(handler.ctx, bson.M{"_id": objID}, bson.D{{ //nolint:govet
+		"$set", bson.D{
+			{"name", book.Name},           //nolint:govet
+			{"author", book.Author},       //nolint:govet
+			{"publisher", book.Publisher}, //nolint:govet
+			{"tags", book.Tags},           //nolint:govet
+			{"review", book.Review},       //nolint:govet
+		},
+	}})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
 	}
 
-	if found {
+	if res.MatchedCount == 1 {
 		ctx.JSON(http.StatusOK, book)
 		return
 	}
@@ -177,17 +237,19 @@ func UpdateBook(ctx *gin.Context) {
 //         message: "Book has been deleted"
 //     '404':
 //         error: "book not found"
-func DeleteBook(ctx *gin.Context) {
+func (handler *BooksHandler) DeleteBook(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	found := false
-	for i, v := range books {
-		if v.ID == id {
-			found = true
-			books = append(books[:i], books[i+1:]...)
-		}
+	objID, _ := primitive.ObjectIDFromHex(id)
+	res, err := handler.col.DeleteOne(handler.ctx, bson.M{"_id": objID})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
 	}
-	if found {
+
+	if res.DeletedCount == 1 {
 		ctx.JSON(http.StatusOK, gin.H{
 			"message": "Book has been deleted",
 		})
