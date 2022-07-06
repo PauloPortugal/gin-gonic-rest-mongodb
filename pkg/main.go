@@ -48,20 +48,35 @@ func main() {
 
 	cfg := readConfig()
 
-	setupMongoDB(ctx, cfg)
+	client := setupMongoDBClient(ctx, cfg)
+	booksCollection := setBooksCollection(cfg, client)
+
+	setupIndexes(ctx, booksCollection, cfg)
+
+	if err := loadStaticData(ctx, booksCollection); err != nil {
+		log.Fatal(fmt.Errorf("could not insert static data: %w\n", err))
+	}
 
 	router := gin.Default()
+	booksHandler := handlers.New(ctx, cfg, booksCollection)
 
-	router.POST("/books", handlers.NewBook)
-	router.GET("/books", handlers.ListBooks)
-	router.PUT("/books/:id", handlers.UpdateBook)
-	router.DELETE("/books/:id", handlers.DeleteBook)
-	router.GET("/books/search", handlers.SearchBooks)
+	router.POST("/books", booksHandler.NewBook)
+	router.GET("/books", booksHandler.ListBooks)
+	router.PUT("/books/:id", booksHandler.UpdateBook)
+	router.DELETE("/books/:id", booksHandler.DeleteBook)
+	router.GET("/books/search", booksHandler.SearchBooks)
 
 	err := router.Run()
 	if err != nil {
 		return
 	}
+}
+
+func setBooksCollection(cfg *viper.Viper, client *mongo.Client) *mongo.Collection {
+	db := fmt.Sprint(cfg.Get("mongodb.dbname"))
+	col := fmt.Sprint(cfg.Get("mongodb.dbcollection"))
+
+	return client.Database(db).Collection(col)
 }
 
 func readConfig() *viper.Viper {
@@ -75,7 +90,7 @@ func readConfig() *viper.Viper {
 	return viper.GetViper()
 }
 
-func setupMongoDB(ctx context.Context, cfg *viper.Viper) *mongo.Client {
+func setupMongoDBClient(ctx context.Context, cfg *viper.Viper) *mongo.Client {
 	uri := fmt.Sprintf("mongodb://%s:%s@%s/test?authSource=admin",
 		cfg.Get("mongodb.dbuser"),
 		cfg.Get("mongodb.dbpassword"),
@@ -92,18 +107,10 @@ func setupMongoDB(ctx context.Context, cfg *viper.Viper) *mongo.Client {
 
 	log.Println("Connected to MongoDB")
 
-	setupIndexes(ctx, client, cfg)
-
-	err = loadStaticData(ctx, client, cfg)
-	if err != nil {
-		log.Fatal(fmt.Errorf("could not insert static data: %w\n", err))
-		return nil
-	}
-
 	return client
 }
 
-func loadStaticData(ctx context.Context, client *mongo.Client, cfg *viper.Viper) error {
+func loadStaticData(ctx context.Context, collection *mongo.Collection) error {
 	books := make([]model.Book, 0)
 
 	file, err := ioutil.ReadFile("books.json")
@@ -115,14 +122,11 @@ func loadStaticData(ctx context.Context, client *mongo.Client, cfg *viper.Viper)
 		return err
 	}
 
-	db := fmt.Sprint(cfg.Get("mongodb.dbname"))
-	col := fmt.Sprint(cfg.Get("mongodb.dbcollection"))
-
 	var b []interface{}
 	for _, book := range books {
 		b = append(b, book)
 	}
-	result, err := client.Database(db).Collection(col).InsertMany(ctx, b)
+	result, err := collection.InsertMany(ctx, b)
 	if err != nil {
 		if mongoErr, ok := err.(mongo.BulkWriteException); ok {
 			if len(mongoErr.WriteErrors) > 0 && mongoErr.WriteErrors[0].Code == 11000 {
@@ -137,10 +141,7 @@ func loadStaticData(ctx context.Context, client *mongo.Client, cfg *viper.Viper)
 	return nil
 }
 
-func setupIndexes(ctx context.Context, client *mongo.Client, cfg *viper.Viper) {
-	db := fmt.Sprint(cfg.Get("mongodb.dbname"))
-	col := fmt.Sprint(cfg.Get("mongodb.dbcollection"))
-
+func setupIndexes(ctx context.Context, collection *mongo.Collection, cfg *viper.Viper) {
 	idxOpt := &options.IndexOptions{}
 	idxOpt.SetUnique(true)
 	mod := mongo.IndexModel{
@@ -150,11 +151,11 @@ func setupIndexes(ctx context.Context, client *mongo.Client, cfg *viper.Viper) {
 		Options: idxOpt,
 	}
 
-	ind, err := client.Database(db).Collection(col).Indexes().CreateOne(ctx, mod)
+	ind, err := collection.Indexes().CreateOne(ctx, mod)
 	if err != nil {
 		log.Fatal(fmt.Errorf("Indexes().CreateOne() ERROR: %w", err))
 	} else {
-		// API call returns string of the index name
+		// BooksHandler call returns string of the index name
 		log.Printf("CreateOne() index: %s\n", ind)
 	}
 }
