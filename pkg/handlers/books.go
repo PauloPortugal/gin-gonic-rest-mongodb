@@ -3,28 +3,25 @@ package handlers
 import (
 	"context"
 	"net/http"
-	"time"
 
+	"github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/datastore"
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/model"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // BooksHandler provides a struct to wrap the api around
 type BooksHandler struct {
-	cfg *viper.Viper
-	col *mongo.Collection
-	ctx context.Context
+	ctx   context.Context
+	cfg   *viper.Viper
+	store datastore.Datastore
 }
 
-func New(ctx context.Context, cfg *viper.Viper, col *mongo.Collection) *BooksHandler {
+func New(ctx context.Context, cfg *viper.Viper, store datastore.Datastore) *BooksHandler {
 	return &BooksHandler{
-		ctx: ctx,
-		cfg: cfg,
-		col: col,
+		ctx:   ctx,
+		cfg:   cfg,
+		store: store,
 	}
 }
 
@@ -50,22 +47,19 @@ func New(ctx context.Context, cfg *viper.Viper, col *mongo.Collection) *BooksHan
 //           items:
 //                "$ref": "#/definitions/Book"
 //     '400':
-//         description: Invalid input
+//         description: invalid input
 //     '500':
 //         description: internal server error
 func (handler *BooksHandler) NewBook(ctx *gin.Context) {
-	var book model.Book
+	var book *model.Book
 	if err := ctx.ShouldBindJSON(&book); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"invalid input": err.Error(),
 		})
 		return
 	}
 
-	book.ID = primitive.NewObjectID()
-	book.SubmissionDate = time.Now()
-	_, err := handler.col.InsertOne(handler.ctx, book)
-	if err != nil {
+	if err := handler.store.AddBook(handler.ctx, book); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
@@ -91,21 +85,14 @@ func (handler *BooksHandler) NewBook(ctx *gin.Context) {
 //     '500':
 //         description: internal server error
 func (handler *BooksHandler) ListBooks(ctx *gin.Context) {
-	books := make([]model.Book, 0)
-	cur, err := handler.col.Find(handler.ctx, bson.M{})
+	books, err := handler.store.ListBooks(handler.ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
-	if err = cur.All(handler.ctx, &books); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-	}
-
-	ctx.JSON(http.StatusOK, &books)
+	ctx.JSON(http.StatusOK, books)
 }
 
 // swagger:operation GET /books/search books searchBooks
@@ -130,22 +117,13 @@ func (handler *BooksHandler) ListBooks(ctx *gin.Context) {
 //                "$ref": "#/definitions/Book"
 func (handler *BooksHandler) SearchBooks(ctx *gin.Context) {
 	tag := ctx.Query("tag")
-	books := make([]model.Book, 0)
-	cur, err := handler.col.Find(handler.ctx, bson.M{
-		"tags": tag,
-	})
+	books, err := handler.store.SearchBooks(handler.ctx, tag)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
-	if err = cur.All(handler.ctx, &books); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-	}
-
 	ctx.JSON(http.StatusOK, books)
 }
 
@@ -192,31 +170,19 @@ func (handler *BooksHandler) UpdateBook(ctx *gin.Context) {
 		return
 	}
 
-	objID, _ := primitive.ObjectIDFromHex(id)
-	res, err := handler.col.UpdateOne(handler.ctx, bson.M{"_id": objID}, bson.D{{ //nolint:govet
-		"$set", bson.D{
-			{"name", book.Name},           //nolint:govet
-			{"author", book.Author},       //nolint:govet
-			{"publisher", book.Publisher}, //nolint:govet
-			{"tags", book.Tags},           //nolint:govet
-			{"review", book.Review},       //nolint:govet
-		},
-	}})
+	modifiedCount, err := handler.store.UpdateBook(handler.ctx, id, book)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+		return
+	}
+
+	if modifiedCount == 0 {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"error": "book not found",
 		})
 		return
 	}
 
-	if res.MatchedCount == 1 {
-		ctx.JSON(http.StatusOK, book)
-		return
-	}
-
-	ctx.JSON(http.StatusNotFound, gin.H{
-		"error": "book not found",
-	})
+	ctx.JSON(http.StatusOK, book)
 }
 
 // swagger:operation DELETE /books/{id} books deleteBook
@@ -240,8 +206,7 @@ func (handler *BooksHandler) UpdateBook(ctx *gin.Context) {
 func (handler *BooksHandler) DeleteBook(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	objID, _ := primitive.ObjectIDFromHex(id)
-	res, err := handler.col.DeleteOne(handler.ctx, bson.M{"_id": objID})
+	deletedCount, err := handler.store.DeleteBook(handler.ctx, id)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -249,14 +214,14 @@ func (handler *BooksHandler) DeleteBook(ctx *gin.Context) {
 		return
 	}
 
-	if res.DeletedCount == 1 {
-		ctx.JSON(http.StatusOK, gin.H{
-			"message": "Book has been deleted",
+	if deletedCount == 0 {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"error": "book not found",
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusNotFound, gin.H{
-		"error": "book not found",
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "Book has been deleted",
 	})
 }
