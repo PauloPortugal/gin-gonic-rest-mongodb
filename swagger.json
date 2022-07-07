@@ -10,8 +10,8 @@
   ],
   "swagger": "2.0",
   "info": {
-    "description": "Simple Gin BooksHandler",
-    "title": "Documentation of our Books BooksHandler",
+    "description": "Simple Gin API",
+    "title": "Documentation of our Books API",
     "contact": {
       "name": "Test User",
       "url": "http://github.com/",
@@ -83,7 +83,7 @@
             }
           },
           "400": {
-            "description": "Invalid input"
+            "description": "invalid input"
           },
           "500": {
             "description": "internal server error"

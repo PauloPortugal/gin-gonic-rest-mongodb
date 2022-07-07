@@ -28,16 +28,13 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 
+	"github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/datastore"
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/handlers"
-	"github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/model"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -47,18 +44,14 @@ func main() {
 	ctx := context.Background()
 
 	cfg := readConfig()
-
 	client := setupMongoDBClient(ctx, cfg)
-	booksCollection := setBooksCollection(cfg, client)
 
-	setupIndexes(ctx, booksCollection, cfg)
-
-	if err := loadStaticData(ctx, booksCollection); err != nil {
-		log.Fatal(fmt.Errorf("could not insert static data: %w\n", err))
-	}
+	store := datastore.New(client, cfg)
+	store.Init(ctx)
 
 	router := gin.Default()
-	booksHandler := handlers.New(ctx, cfg, booksCollection)
+
+	booksHandler := handlers.New(ctx, cfg, store)
 
 	router.POST("/books", booksHandler.NewBook)
 	router.GET("/books", booksHandler.ListBooks)
@@ -70,13 +63,6 @@ func main() {
 	if err != nil {
 		return
 	}
-}
-
-func setBooksCollection(cfg *viper.Viper, client *mongo.Client) *mongo.Collection {
-	db := fmt.Sprint(cfg.Get("mongodb.dbname"))
-	col := fmt.Sprint(cfg.Get("mongodb.dbcollection"))
-
-	return client.Database(db).Collection(col)
 }
 
 func readConfig() *viper.Viper {
@@ -108,54 +94,4 @@ func setupMongoDBClient(ctx context.Context, cfg *viper.Viper) *mongo.Client {
 	log.Println("Connected to MongoDB")
 
 	return client
-}
-
-func loadStaticData(ctx context.Context, collection *mongo.Collection) error {
-	books := make([]model.Book, 0)
-
-	file, err := ioutil.ReadFile("books.json")
-	if err != nil {
-		return err
-	}
-
-	if err = json.Unmarshal(file, &books); err != nil {
-		return err
-	}
-
-	var b []interface{}
-	for _, book := range books {
-		b = append(b, book)
-	}
-	result, err := collection.InsertMany(ctx, b)
-	if err != nil {
-		if mongoErr, ok := err.(mongo.BulkWriteException); ok {
-			if len(mongoErr.WriteErrors) > 0 && mongoErr.WriteErrors[0].Code == 11000 {
-				return nil
-			}
-		}
-		return err
-	}
-
-	log.Printf("Inserted books: %d\n", len(result.InsertedIDs))
-
-	return nil
-}
-
-func setupIndexes(ctx context.Context, collection *mongo.Collection, cfg *viper.Viper) {
-	idxOpt := &options.IndexOptions{}
-	idxOpt.SetUnique(true)
-	mod := mongo.IndexModel{
-		Keys: bson.M{
-			"id": 1, // index in ascending order
-		},
-		Options: idxOpt,
-	}
-
-	ind, err := collection.Indexes().CreateOne(ctx, mod)
-	if err != nil {
-		log.Fatal(fmt.Errorf("Indexes().CreateOne() ERROR: %w", err))
-	} else {
-		// BooksHandler call returns string of the index name
-		log.Printf("CreateOne() index: %s\n", ind)
-	}
 }
