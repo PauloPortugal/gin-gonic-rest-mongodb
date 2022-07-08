@@ -3,6 +3,7 @@ package datastore
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -20,26 +21,27 @@ type Datastore interface {
 	AddBook(ctx context.Context, book *model.Book) error
 	ListBooks(ctx context.Context) ([]model.Book, error)
 	SearchBooks(ctx context.Context, tag string) ([]model.Book, error)
+	GetBook(ctx context.Context, id string) (model.Book, error)
 	UpdateBook(ctx context.Context, id string, book model.Book) (int, error)
 	DeleteBook(ctx context.Context, id string) (int, error)
 }
 
-// Client is the client responsible for querying mongodb
-type Client struct {
+// MongoDBClient is the client responsible for querying mongodb
+type MongoDBClient struct {
 	client *mongo.Client
 	cfg    *viper.Viper
 	col    *mongo.Collection
 }
 
-func New(client *mongo.Client, cfg *viper.Viper) *Client {
-	return &Client{
+func New(client *mongo.Client, cfg *viper.Viper) *MongoDBClient {
+	return &MongoDBClient{
 		client: client,
 		cfg:    cfg,
 		col:    getBooksCollection(cfg, client),
 	}
 }
 
-func (c *Client) Init(ctx context.Context) {
+func (c *MongoDBClient) Init(ctx context.Context) {
 	booksCollection := getBooksCollection(c.cfg, c.client)
 
 	setupIndexes(ctx, booksCollection, c.cfg)
@@ -50,7 +52,7 @@ func (c *Client) Init(ctx context.Context) {
 }
 
 // AddBook wrapper to add a book to the MongoDB collection
-func (c *Client) AddBook(ctx context.Context, book *model.Book) error {
+func (c *MongoDBClient) AddBook(ctx context.Context, book *model.Book) error {
 	book.ID = primitive.NewObjectID()
 	book.SubmissionDate = time.Now()
 	_, err := c.col.InsertOne(ctx, book)
@@ -62,7 +64,7 @@ func (c *Client) AddBook(ctx context.Context, book *model.Book) error {
 }
 
 // ListBooks wrapper to return all books from the MongoDB collection
-func (c *Client) ListBooks(ctx context.Context) ([]model.Book, error) {
+func (c *MongoDBClient) ListBooks(ctx context.Context) ([]model.Book, error) {
 	books := make([]model.Book, 0)
 	cur, err := c.col.Find(ctx, bson.M{})
 	if err != nil {
@@ -79,7 +81,7 @@ func (c *Client) ListBooks(ctx context.Context) ([]model.Book, error) {
 }
 
 // SearchBooks wrapper to return all books based on a 'tag' from the MongoDB collection
-func (c *Client) SearchBooks(ctx context.Context, tag string) ([]model.Book, error) {
+func (c *MongoDBClient) SearchBooks(ctx context.Context, tag string) ([]model.Book, error) {
 	books := make([]model.Book, 0)
 	cur, err := c.col.Find(ctx, bson.M{"tags": tag})
 	if err != nil {
@@ -95,7 +97,26 @@ func (c *Client) SearchBooks(ctx context.Context, tag string) ([]model.Book, err
 	return books, nil
 }
 
-func (c *Client) UpdateBook(ctx context.Context, id string, book model.Book) (int, error) {
+func (c *MongoDBClient) GetBook(ctx context.Context, id string) (model.Book, error) {
+	var book model.Book
+	objID, _ := primitive.ObjectIDFromHex(id)
+	res := c.col.FindOne(ctx, bson.M{"_id": objID})
+	if res.Err() != nil {
+		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
+			return book, nil
+		}
+		log.Print(fmt.Errorf("error when finding the book [%s]: %q", id, res.Err()))
+		return book, res.Err()
+	}
+
+	if err := res.Decode(&book); err != nil {
+		log.Print(fmt.Errorf("error decoding [%s]: %q", id, err))
+		return book, err
+	}
+	return book, nil
+}
+
+func (c *MongoDBClient) UpdateBook(ctx context.Context, id string, book model.Book) (int, error) {
 	objID, _ := primitive.ObjectIDFromHex(id)
 	res, err := c.col.UpdateOne(ctx, bson.M{"_id": objID}, bson.D{{ //nolint:govet
 		"$set", bson.D{
@@ -115,11 +136,11 @@ func (c *Client) UpdateBook(ctx context.Context, id string, book model.Book) (in
 }
 
 // DeleteBook wrapper to delete a book from the MongoDB collection
-func (c *Client) DeleteBook(ctx context.Context, id string) (int, error) {
+func (c *MongoDBClient) DeleteBook(ctx context.Context, id string) (int, error) {
 	objID, _ := primitive.ObjectIDFromHex(id)
 	res, err := c.col.DeleteOne(ctx, bson.M{"_id": objID})
 	if err != nil {
-		log.Print(fmt.Errorf("could marshall the books results: %w", err))
+		log.Print(fmt.Errorf("error marshalling the books results: %w", err))
 		return 0, err
 	}
 
@@ -169,7 +190,7 @@ func setupIndexes(ctx context.Context, collection *mongo.Collection, cfg *viper.
 	idxOpt.SetUnique(true)
 	mod := mongo.IndexModel{
 		Keys: bson.M{
-			"id": 1, // index in ascending order
+			"name": 1, // index in ascending order
 		},
 		Options: idxOpt,
 	}

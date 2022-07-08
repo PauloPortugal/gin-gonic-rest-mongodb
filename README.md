@@ -6,6 +6,9 @@ MongoDB in Dropwizard with an OpenAPI specification.
 This example is a simple RESTful API to easily manage books read.
 
  * using [gin-gonic](https://github.com/gin-gonic/gin#gin-web-framework) v1.7.7 web framework
+ * using [viper](https://github.com/spf13/viper) as a configuration solution
+ * using [mongo-db](https://www.mongodb.com/) as NoSQL DB
+ * using [redis](https://redis.io/) to cache `GET /books` and `GET /books/:id` resources
 
 ## How to start the Gin-gonic application
 ```shell
@@ -54,3 +57,22 @@ curl -X DELETE 'localhost:8080/books/c8n5pb2kq9ndfcl9os7g'
 ```shell
 curl -X GET 'localhost:8080/books/search?tag=nasa'
 ```
+
+## Required Docker images
+
+Create a MongoDB container
+```shell
+docker pull mongo
+docker create --name mongodb -it -p 27017:27017 mongo
+```
+
+Create a Redis container
+```shell
+docker pull redis
+docker create --name redis -it -p 6379:6379 redis
+```
+
+## TODO
+
+1. Improve error handling
+2. Improve logging

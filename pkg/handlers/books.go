@@ -12,16 +12,18 @@ import (
 
 // BooksHandler provides a struct to wrap the api around
 type BooksHandler struct {
-	ctx   context.Context
-	cfg   *viper.Viper
-	store datastore.Datastore
+	ctx          context.Context
+	cfg          *viper.Viper
+	mongoDBStore datastore.Datastore
+	redisStore   datastore.Redis
 }
 
-func New(ctx context.Context, cfg *viper.Viper, store datastore.Datastore) *BooksHandler {
+func New(ctx context.Context, cfg *viper.Viper, mongoDBStore datastore.Datastore, redisStore *datastore.RedisClient) *BooksHandler {
 	return &BooksHandler{
-		ctx:   ctx,
-		cfg:   cfg,
-		store: store,
+		ctx:          ctx,
+		cfg:          cfg,
+		mongoDBStore: mongoDBStore,
+		redisStore:   redisStore,
 	}
 }
 
@@ -59,12 +61,15 @@ func (handler *BooksHandler) NewBook(ctx *gin.Context) {
 		return
 	}
 
-	if err := handler.store.AddBook(handler.ctx, book); err != nil {
+	if err := handler.mongoDBStore.AddBook(handler.ctx, book); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
+
+	handler.redisStore.DeleteEntry(handler.ctx, "books")
+
 	ctx.JSON(http.StatusCreated, book)
 }
 
@@ -85,13 +90,33 @@ func (handler *BooksHandler) NewBook(ctx *gin.Context) {
 //     '500':
 //         description: internal server error
 func (handler *BooksHandler) ListBooks(ctx *gin.Context) {
-	books, err := handler.store.ListBooks(handler.ctx)
+	// first query Redis/cache
+	books, err := handler.redisStore.GetBooks(handler.ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
+
+	// if not available on Redis DB, then query MongoDB
+	if books == nil {
+		books, err = handler.mongoDBStore.ListBooks(handler.ctx)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		err := handler.redisStore.SetBooks(handler.ctx, books)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+	}
+
 	ctx.JSON(http.StatusOK, books)
 }
 
@@ -117,13 +142,15 @@ func (handler *BooksHandler) ListBooks(ctx *gin.Context) {
 //                "$ref": "#/definitions/Book"
 func (handler *BooksHandler) SearchBooks(ctx *gin.Context) {
 	tag := ctx.Query("tag")
-	books, err := handler.store.SearchBooks(handler.ctx, tag)
+
+	books, err := handler.mongoDBStore.SearchBooks(handler.ctx, tag)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
+
 	ctx.JSON(http.StatusOK, books)
 }
 
@@ -170,7 +197,7 @@ func (handler *BooksHandler) UpdateBook(ctx *gin.Context) {
 		return
 	}
 
-	modifiedCount, err := handler.store.UpdateBook(handler.ctx, id, book)
+	modifiedCount, err := handler.mongoDBStore.UpdateBook(handler.ctx, id, book)
 	if err != nil {
 		return
 	}
@@ -181,6 +208,8 @@ func (handler *BooksHandler) UpdateBook(ctx *gin.Context) {
 		})
 		return
 	}
+
+	handler.redisStore.DeleteEntry(handler.ctx, id)
 
 	ctx.JSON(http.StatusOK, book)
 }
@@ -206,7 +235,7 @@ func (handler *BooksHandler) UpdateBook(ctx *gin.Context) {
 func (handler *BooksHandler) DeleteBook(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	deletedCount, err := handler.store.DeleteBook(handler.ctx, id)
+	deletedCount, err := handler.mongoDBStore.DeleteBook(handler.ctx, id)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -221,7 +250,65 @@ func (handler *BooksHandler) DeleteBook(ctx *gin.Context) {
 		return
 	}
 
+	handler.redisStore.DeleteEntry(handler.ctx, id)
+
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": "Book has been deleted",
 	})
+}
+
+// swagger:operation GET /books/{id} books getBook
+// Returns a book
+// ---
+// parameters:
+// - name: id
+//   in: path
+//   description: ID of the book
+//   required: true
+//   type: string
+// consumes:
+// - application/json
+// produces:
+// - application/json
+// responses:
+//     '200':
+//         schema:
+//           items:
+//                "$ref": "#/definitions/Book"
+//     '500':
+//         error: error description
+func (handler *BooksHandler) GetBook(ctx *gin.Context) {
+	id := ctx.Param("id")
+
+	book, err := handler.redisStore.GetBook(handler.ctx, id)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if book.Name == "" {
+		book, err = handler.mongoDBStore.GetBook(handler.ctx, id)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		if book.Name == "" {
+			ctx.Status(http.StatusNotFound)
+			return
+		}
+
+		if err := handler.redisStore.SetBook(handler.ctx, id, book); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+	}
+
+	ctx.JSON(http.StatusCreated, book)
 }
