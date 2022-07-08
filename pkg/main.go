@@ -34,6 +34,7 @@ import (
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/datastore"
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/handlers"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -44,17 +45,21 @@ func main() {
 	ctx := context.Background()
 
 	cfg := readConfig()
-	client := setupMongoDBClient(ctx, cfg)
+	mongoDBClient := setupMongoDBClient(ctx, cfg)
+	mongoDBStore := datastore.New(mongoDBClient, cfg)
 
-	store := datastore.New(client, cfg)
-	store.Init(ctx)
+	redisClient := setupRedisClient(ctx, cfg)
+	redisStore := datastore.NewRedisClient(redisClient, cfg)
+
+	mongoDBStore.Init(ctx)
 
 	router := gin.Default()
 
-	booksHandler := handlers.New(ctx, cfg, store)
+	booksHandler := handlers.New(ctx, cfg, mongoDBStore, redisStore)
 
 	router.POST("/books", booksHandler.NewBook)
 	router.GET("/books", booksHandler.ListBooks)
+	router.GET("/books/:id", booksHandler.GetBook)
 	router.PUT("/books/:id", booksHandler.UpdateBook)
 	router.DELETE("/books/:id", booksHandler.DeleteBook)
 	router.GET("/books/search", booksHandler.SearchBooks)
@@ -92,6 +97,20 @@ func setupMongoDBClient(ctx context.Context, cfg *viper.Viper) *mongo.Client {
 	}
 
 	log.Println("Connected to MongoDB")
+
+	return client
+}
+
+func setupRedisClient(ctx context.Context, cfg *viper.Viper) *redis.Client {
+	redisOpt := &redis.Options{
+		Addr:     fmt.Sprint(cfg.Get("redis.host")),
+		Password: "",
+		DB:       0,
+	}
+	client := redis.NewClient(redisOpt)
+
+	status := client.Ping(ctx)
+	log.Print(fmt.Sprintf("redis status: %q", status))
 
 	return client
 }

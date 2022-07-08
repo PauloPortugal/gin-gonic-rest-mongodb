@@ -54,3 +54,17 @@ curl -X DELETE 'localhost:8080/books/c8n5pb2kq9ndfcl9os7g'
 ```shell
 curl -X GET 'localhost:8080/books/search?tag=nasa'
 ```
+
+## Required Docker images
+
+Create a MongoDB container
+```shell
+docker pull mongo
+docker create --name mongodb -it -p 27017:27017 mongo
+```
+
+Create a Redis container
+```shell
+docker pull redis
+docker create --name redis -it -p 6379:6379 redis
+```

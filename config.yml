@@ -7,3 +7,6 @@ mongodb:
   dbuser: "user_name"
   dbpassword: "user_pass"
   dbhost: "localhost:27017"
+
+redis:
+  host: "localhost:6379"
