@@ -6,6 +6,9 @@ MongoDB in Dropwizard with an OpenAPI specification.
 This example is a simple RESTful API to easily manage books read.
 
  * using [gin-gonic](https://github.com/gin-gonic/gin#gin-web-framework) v1.7.7 web framework
+ * using [viper](https://github.com/spf13/viper) as a configuration solution
+ * using [mongo-db](https://www.mongodb.com/) as NoSQL DB
+ * using [redis](https://redis.io/) to cache `GET /books` and `GET /books/:id` resources
 
 ## How to start the Gin-gonic application
 ```shell
