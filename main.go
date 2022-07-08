@@ -31,8 +31,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/datastore"
-	"github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/handlers"
+	datastore2 "github.com/PauloPortugal/gin-gonic-rest-mongodb/datastore"
+	"github.com/PauloPortugal/gin-gonic-rest-mongodb/handlers"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/viper"
@@ -46,10 +46,10 @@ func main() {
 
 	cfg := readConfig()
 	mongoDBClient := setupMongoDBClient(ctx, cfg)
-	mongoDBStore := datastore.New(mongoDBClient, cfg)
+	mongoDBStore := datastore2.New(mongoDBClient, cfg)
 
 	redisClient := setupRedisClient(ctx, cfg)
-	redisStore := datastore.NewRedisClient(redisClient, cfg)
+	redisStore := datastore2.NewRedisClient(redisClient, cfg)
 
 	mongoDBStore.Init(ctx)
 

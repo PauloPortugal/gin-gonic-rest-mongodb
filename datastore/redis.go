@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/model"
+	"github.com/PauloPortugal/gin-gonic-rest-mongodb/model"
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/viper"
 )

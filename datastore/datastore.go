@@ -9,7 +9,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/model"
+	"github.com/PauloPortugal/gin-gonic-rest-mongodb/model"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
