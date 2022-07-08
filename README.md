@@ -68,3 +68,8 @@ Create a Redis container
 docker pull redis
 docker create --name redis -it -p 6379:6379 redis
 ```
+
+## TODO
+
+1. Improve error handling
+2. Improve logging
