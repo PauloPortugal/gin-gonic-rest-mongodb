@@ -33,6 +33,7 @@ import (
 
 	datastore2 "github.com/PauloPortugal/gin-gonic-rest-mongodb/datastore"
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/handlers"
+	"github.com/PauloPortugal/gin-gonic-rest-mongodb/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/viper"
@@ -53,16 +54,22 @@ func main() {
 
 	mongoDBStore.Init(ctx)
 
-	router := gin.Default()
-
 	booksHandler := handlers.New(ctx, cfg, mongoDBStore, redisStore)
+	authHandler := handlers.NewAuthHandler(cfg)
 
-	router.POST("/books", booksHandler.NewBook)
+	// public endpoints
+	router := gin.Default()
+	router.POST("/signin", authHandler.SignInHandler)
 	router.GET("/books", booksHandler.ListBooks)
 	router.GET("/books/:id", booksHandler.GetBook)
-	router.PUT("/books/:id", booksHandler.UpdateBook)
-	router.DELETE("/books/:id", booksHandler.DeleteBook)
 	router.GET("/books/search", booksHandler.SearchBooks)
+
+	// private endpoints
+	authorised := router.Group("/")
+	authorised.Use(middleware.AuthMiddleware(cfg))
+	authorised.POST("/books", booksHandler.NewBook)
+	authorised.PUT("/books/:id", booksHandler.UpdateBook)
+	authorised.DELETE("/books/:id", booksHandler.DeleteBook)
 
 	err := router.Run()
 	if err != nil {
