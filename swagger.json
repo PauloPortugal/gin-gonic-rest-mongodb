@@ -70,6 +70,14 @@
             "schema": {
               "$ref": "#/definitions/Book"
             }
+          },
+          {
+            "type": "string",
+            "example": "someJWTToken",
+            "description": "Auth header, where the JWT token should be provided",
+            "name": "Authorization",
+            "in": "header",
+            "required": true
           }
         ],
         "responses": {
@@ -126,6 +134,41 @@
       }
     },
     "/books/{id}": {
+      "get": {
+        "description": "Returns a book",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "books"
+        ],
+        "operationId": "getBook",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "ID of the book",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/Book"
+              }
+            }
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      },
       "put": {
         "description": "Update an existing book",
         "consumes": [
@@ -146,6 +189,14 @@
             "schema": {
               "$ref": "#/definitions/Book"
             }
+          },
+          {
+            "type": "string",
+            "example": "someJWTToken",
+            "description": "Auth header, where the JWT token should be provided",
+            "name": "Authorization",
+            "in": "header",
+            "required": true
           }
         ],
         "responses": {
@@ -188,6 +239,14 @@
             "name": "id",
             "in": "path",
             "required": true
+          },
+          {
+            "type": "string",
+            "example": "someJWTToken",
+            "description": "Auth header, where the JWT token should be provided",
+            "name": "Authorization",
+            "in": "header",
+            "required": true
           }
         ],
         "responses": {
@@ -196,6 +255,51 @@
           },
           "404": {
             "description": ""
+          }
+        }
+      }
+    },
+    "/signin": {
+      "post": {
+        "description": "Signs in a user",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "auth"
+        ],
+        "operationId": "signUser",
+        "parameters": [
+          {
+            "description": "The user credentials",
+            "name": "User",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/User"
+              }
+            }
+          },
+          "400": {
+            "description": "invalid input"
+          },
+          "401": {
+            "description": "unauthorised"
+          },
+          "500": {
+            "description": "internal server error"
           }
         }
       }
@@ -267,7 +371,29 @@
           ]
         }
       },
-      "x-go-package": "github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/model"
+      "x-go-package": "github.com/PauloPortugal/gin-gonic-rest-mongodb/model"
+    },
+    "JWTOutput": {
+      "type": "object",
+      "title": "JWTOutput Represents the response after a successful attempt.",
+      "required": [
+        "token",
+        "expires"
+      ],
+      "properties": {
+        "expires": {
+          "description": "Token's time-to-live (TTL)",
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "Expires"
+        },
+        "token": {
+          "description": "the JWT token",
+          "type": "string",
+          "x-go-name": "Token"
+        }
+      },
+      "x-go-package": "github.com/PauloPortugal/gin-gonic-rest-mongodb/model"
     },
     "PublishedDate": {
       "description": "PublishedDate Represents the month and year of when the book was published",
@@ -291,7 +417,30 @@
           "example": "2009"
         }
       },
-      "x-go-package": "github.com/PauloPortugal/gin-gonic-rest-mongodb/pkg/model"
+      "x-go-package": "github.com/PauloPortugal/gin-gonic-rest-mongodb/model"
+    },
+    "User": {
+      "type": "object",
+      "title": "User represents the credentials of an actor trying to log in.",
+      "required": [
+        "username",
+        "password"
+      ],
+      "properties": {
+        "password": {
+          "description": "the password",
+          "type": "string",
+          "x-go-name": "Password",
+          "example": "password"
+        },
+        "username": {
+          "description": "the username",
+          "type": "string",
+          "x-go-name": "Username",
+          "example": "admin"
+        }
+      },
+      "x-go-package": "github.com/PauloPortugal/gin-gonic-rest-mongodb/model"
     }
   },
   "securityDefinitions": {

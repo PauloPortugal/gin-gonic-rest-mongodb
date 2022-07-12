@@ -10,3 +10,7 @@ mongodb:
 
 redis:
   host: "localhost:6379"
+
+auth:
+  # this is just for study purpose
+  secret: "4Ja67+nRUvEUg/fDpbnnVw="

@@ -76,3 +76,7 @@ docker create --name redis -it -p 6379:6379 redis
 
 1. Improve error handling
 2. Improve logging
+3. Adds users resources and store them on the MongoDB
+4. Return user profile
+5. Create refresh endpoint
+6. Testing

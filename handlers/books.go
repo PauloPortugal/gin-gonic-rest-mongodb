@@ -41,6 +41,13 @@ func New(ctx context.Context, cfg *viper.Viper, mongoDBStore datastore2.Datastor
 //   description: The new book to create
 //   schema:
 //         "$ref": "#/definitions/Book"
+// - name: Authorization
+//   in: header
+//   name: Authorization
+//   description: Auth header, where the JWT token should be provided
+//   type: string
+//   example: someJWTToken
+//   required: true
 // responses:
 //     '201':
 //         description: Successful operation
@@ -174,6 +181,13 @@ func (handler *BooksHandler) SearchBooks(ctx *gin.Context) {
 //   description: The new book to create
 //   schema:
 //         "$ref": "#/definitions/Book"
+// - name: Authorization
+//   in: header
+//   name: Authorization
+//   description: Auth header, where the JWT token should be provided
+//   type: string
+//   example: someJWTToken
+//   required: true
 // responses:
 //     '200':
 //         description: Successful operation
@@ -223,6 +237,13 @@ func (handler *BooksHandler) UpdateBook(ctx *gin.Context) {
 //   description: ID of the book
 //   required: true
 //   type: string
+// - name: Authorization
+//   in: header
+//   name: Authorization
+//   description: Auth header, where the JWT token should be provided
+//   type: string
+//   example: someJWTToken
+//   required: true
 // consumes:
 // - application/json
 // produces:
