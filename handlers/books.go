@@ -14,11 +14,11 @@ import (
 type BooksHandler struct {
 	ctx          context.Context
 	cfg          *viper.Viper
-	mongoDBStore datastore2.Datastore
+	mongoDBStore datastore2.Books
 	redisStore   datastore2.Redis
 }
 
-func New(ctx context.Context, cfg *viper.Viper, mongoDBStore datastore2.Datastore, redisStore *datastore2.RedisClient) *BooksHandler {
+func New(ctx context.Context, cfg *viper.Viper, mongoDBStore datastore2.Books, redisStore *datastore2.RedisClient) *BooksHandler {
 	return &BooksHandler{
 		ctx:          ctx,
 		cfg:          cfg,

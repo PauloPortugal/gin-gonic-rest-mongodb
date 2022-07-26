@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/PauloPortugal/gin-gonic-rest-mongodb/datastore"
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/model"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
@@ -12,11 +14,19 @@ import (
 )
 
 type AuthHandler struct {
-	cfg *viper.Viper
+	ctx        context.Context
+	cfg        *viper.Viper
+	db         datastore.Users
+	redisStore datastore.Redis
 }
 
-func NewAuthHandler(cfg *viper.Viper) *AuthHandler {
-	return &AuthHandler{cfg: cfg}
+func NewAuthHandler(ctx context.Context, cfg *viper.Viper, store *datastore.UsersClient, redisStore *datastore.RedisClient) *AuthHandler {
+	return &AuthHandler{
+		ctx:        ctx,
+		cfg:        cfg,
+		db:         store,
+		redisStore: redisStore,
+	}
 }
 
 // swagger:operation POST /signin auth signUser
@@ -95,7 +105,8 @@ func (h *AuthHandler) isInvalidUser(ctx *gin.Context, user *model.User) bool {
 		return true
 	}
 
-	//TODO: remove this hardcoded check
+	//h.db
+
 	if user.Username != "admin" || user.Password != "password" {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"error": "Invalid username or password",

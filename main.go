@@ -31,7 +31,7 @@ import (
 	"fmt"
 	"log"
 
-	datastore2 "github.com/PauloPortugal/gin-gonic-rest-mongodb/datastore"
+	"github.com/PauloPortugal/gin-gonic-rest-mongodb/datastore"
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/handlers"
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/middleware"
 	"github.com/gin-gonic/gin"
@@ -47,15 +47,17 @@ func main() {
 
 	cfg := readConfig()
 	mongoDBClient := setupMongoDBClient(ctx, cfg)
-	mongoDBStore := datastore2.New(mongoDBClient, cfg)
+	booksClient := datastore.NewBooksClient(mongoDBClient, cfg)
+	usersClient := datastore.NewUsersClient(mongoDBClient, cfg)
 
 	redisClient := setupRedisClient(ctx, cfg)
-	redisStore := datastore2.NewRedisClient(redisClient, cfg)
+	redisStore := datastore.NewRedisClient(redisClient, cfg)
 
-	mongoDBStore.Init(ctx)
+	booksClient.InitBooks(ctx)
+	usersClient.InitUsers(ctx)
 
-	booksHandler := handlers.New(ctx, cfg, mongoDBStore, redisStore)
-	authHandler := handlers.NewAuthHandler(cfg)
+	booksHandler := handlers.New(ctx, cfg, booksClient, redisStore)
+	authHandler := handlers.NewAuthHandler(ctx, cfg, usersClient, redisStore)
 
 	// public endpoints
 	router := gin.Default()

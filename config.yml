@@ -3,7 +3,9 @@ server:
 
 mongodb:
   dbname: "demo"
-  dbcollection: "books"
+  dbcollections:
+    books: "books"
+    users: "users"
   dbuser: "user_name"
   dbpassword: "user_pass"
   dbhost: "localhost:27017"

@@ -7,10 +7,10 @@ type User struct {
 	// the username
 	// required: true
 	// example: admin
-	Username string `json:"username"`
+	Username string `json:"username" bson:"username"`
 
 	// the password
 	// required: true
 	// example: password
-	Password string `json:"password"`
+	Password string `json:"password" bson:"password"`
 }

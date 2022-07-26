@@ -17,7 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type Datastore interface {
+type Books interface {
 	AddBook(ctx context.Context, book *model.Book) error
 	ListBooks(ctx context.Context) ([]model.Book, error)
 	SearchBooks(ctx context.Context, tag string) ([]model.Book, error)
@@ -26,36 +26,33 @@ type Datastore interface {
 	DeleteBook(ctx context.Context, id string) (int, error)
 }
 
-// MongoDBClient is the client responsible for querying mongodb
-type MongoDBClient struct {
-	client *mongo.Client
-	cfg    *viper.Viper
-	col    *mongo.Collection
+// BooksClient is the client responsible for querying mongodb
+type BooksClient struct {
+	client   *mongo.Client
+	cfg      *viper.Viper
+	booksCol *mongo.Collection
 }
 
-func New(client *mongo.Client, cfg *viper.Viper) *MongoDBClient {
-	return &MongoDBClient{
-		client: client,
-		cfg:    cfg,
-		col:    getBooksCollection(cfg, client),
+func NewBooksClient(client *mongo.Client, cfg *viper.Viper) *BooksClient {
+	return &BooksClient{
+		client:   client,
+		cfg:      cfg,
+		booksCol: getCollection(cfg, client, "mongodb.dbcollections.books"),
 	}
 }
 
-func (c *MongoDBClient) Init(ctx context.Context) {
-	booksCollection := getBooksCollection(c.cfg, c.client)
-
-	setupIndexes(ctx, booksCollection, c.cfg)
-
-	if err := loadStaticData(ctx, booksCollection); err != nil {
+func (c *BooksClient) InitBooks(ctx context.Context) {
+	setupIndexes(ctx, c.booksCol, "name")
+	if err := loadBooksStaticData(ctx, c.booksCol); err != nil {
 		log.Fatal(fmt.Errorf("could not insert static data: %w\n", err))
 	}
 }
 
 // AddBook wrapper to add a book to the MongoDB collection
-func (c *MongoDBClient) AddBook(ctx context.Context, book *model.Book) error {
+func (c *BooksClient) AddBook(ctx context.Context, book *model.Book) error {
 	book.ID = primitive.NewObjectID()
 	book.SubmissionDate = time.Now()
-	_, err := c.col.InsertOne(ctx, book)
+	_, err := c.booksCol.InsertOne(ctx, book)
 	if err != nil {
 		log.Print(fmt.Errorf("could not add new book: %w", err))
 		return err
@@ -64,9 +61,9 @@ func (c *MongoDBClient) AddBook(ctx context.Context, book *model.Book) error {
 }
 
 // ListBooks wrapper to return all books from the MongoDB collection
-func (c *MongoDBClient) ListBooks(ctx context.Context) ([]model.Book, error) {
+func (c *BooksClient) ListBooks(ctx context.Context) ([]model.Book, error) {
 	books := make([]model.Book, 0)
-	cur, err := c.col.Find(ctx, bson.M{})
+	cur, err := c.booksCol.Find(ctx, bson.M{})
 	if err != nil {
 		log.Print(fmt.Errorf("could not get all books: %w", err))
 		return nil, err
@@ -81,9 +78,9 @@ func (c *MongoDBClient) ListBooks(ctx context.Context) ([]model.Book, error) {
 }
 
 // SearchBooks wrapper to return all books based on a 'tag' from the MongoDB collection
-func (c *MongoDBClient) SearchBooks(ctx context.Context, tag string) ([]model.Book, error) {
+func (c *BooksClient) SearchBooks(ctx context.Context, tag string) ([]model.Book, error) {
 	books := make([]model.Book, 0)
-	cur, err := c.col.Find(ctx, bson.M{"tags": tag})
+	cur, err := c.booksCol.Find(ctx, bson.M{"tags": tag})
 	if err != nil {
 		log.Print(fmt.Errorf("could not search book using tag [%s]: %w", tag, err))
 		return nil, err
@@ -97,10 +94,10 @@ func (c *MongoDBClient) SearchBooks(ctx context.Context, tag string) ([]model.Bo
 	return books, nil
 }
 
-func (c *MongoDBClient) GetBook(ctx context.Context, id string) (model.Book, error) {
+func (c *BooksClient) GetBook(ctx context.Context, id string) (model.Book, error) {
 	var book model.Book
 	objID, _ := primitive.ObjectIDFromHex(id)
-	res := c.col.FindOne(ctx, bson.M{"_id": objID})
+	res := c.booksCol.FindOne(ctx, bson.M{"_id": objID})
 	if res.Err() != nil {
 		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
 			return book, nil
@@ -116,9 +113,9 @@ func (c *MongoDBClient) GetBook(ctx context.Context, id string) (model.Book, err
 	return book, nil
 }
 
-func (c *MongoDBClient) UpdateBook(ctx context.Context, id string, book model.Book) (int, error) {
+func (c *BooksClient) UpdateBook(ctx context.Context, id string, book model.Book) (int, error) {
 	objID, _ := primitive.ObjectIDFromHex(id)
-	res, err := c.col.UpdateOne(ctx, bson.M{"_id": objID}, bson.D{{ //nolint:govet
+	res, err := c.booksCol.UpdateOne(ctx, bson.M{"_id": objID}, bson.D{{ //nolint:govet
 		"$set", bson.D{
 			{"name", book.Name},           //nolint:govet
 			{"author", book.Author},       //nolint:govet
@@ -136,9 +133,9 @@ func (c *MongoDBClient) UpdateBook(ctx context.Context, id string, book model.Bo
 }
 
 // DeleteBook wrapper to delete a book from the MongoDB collection
-func (c *MongoDBClient) DeleteBook(ctx context.Context, id string) (int, error) {
+func (c *BooksClient) DeleteBook(ctx context.Context, id string) (int, error) {
 	objID, _ := primitive.ObjectIDFromHex(id)
-	res, err := c.col.DeleteOne(ctx, bson.M{"_id": objID})
+	res, err := c.booksCol.DeleteOne(ctx, bson.M{"_id": objID})
 	if err != nil {
 		log.Print(fmt.Errorf("error marshalling the books results: %w", err))
 		return 0, err
@@ -147,17 +144,10 @@ func (c *MongoDBClient) DeleteBook(ctx context.Context, id string) (int, error) 
 	return int(res.DeletedCount), nil
 }
 
-func getBooksCollection(cfg *viper.Viper, client *mongo.Client) *mongo.Collection {
-	db := fmt.Sprint(cfg.Get("mongodb.dbname"))
-	col := fmt.Sprint(cfg.Get("mongodb.dbcollection"))
-
-	return client.Database(db).Collection(col)
-}
-
-func loadStaticData(ctx context.Context, collection *mongo.Collection) error {
+func loadBooksStaticData(ctx context.Context, collection *mongo.Collection) error {
 	books := make([]model.Book, 0)
 
-	file, err := ioutil.ReadFile("books.json")
+	file, err := ioutil.ReadFile("default_data/books.json")
 	if err != nil {
 		return err
 	}
@@ -185,12 +175,19 @@ func loadStaticData(ctx context.Context, collection *mongo.Collection) error {
 	return nil
 }
 
-func setupIndexes(ctx context.Context, collection *mongo.Collection, cfg *viper.Viper) {
+func getCollection(cfg *viper.Viper, client *mongo.Client, colKey string) *mongo.Collection {
+	db := cfg.GetString("mongodb.dbname")
+	col := cfg.GetString(colKey)
+
+	return client.Database(db).Collection(col)
+}
+
+func setupIndexes(ctx context.Context, collection *mongo.Collection, key string) {
 	idxOpt := &options.IndexOptions{}
 	idxOpt.SetUnique(true)
 	mod := mongo.IndexModel{
 		Keys: bson.M{
-			"name": 1, // index in ascending order
+			key: 1, // index in ascending order
 		},
 		Options: idxOpt,
 	}
