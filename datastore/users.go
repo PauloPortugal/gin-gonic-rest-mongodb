@@ -10,6 +10,7 @@ import (
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/model"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Users interface {
@@ -23,11 +24,13 @@ type UsersClient struct {
 	col    *mongo.Collection
 }
 
+//Get returns a user by username
 func (c *UsersClient) Get(ctx context.Context, username string) (model.User, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// NewUsersClient create a new UsersClient
 func NewUsersClient(client *mongo.Client, cfg *viper.Viper) *UsersClient {
 	return &UsersClient{
 		client: client,
@@ -58,6 +61,9 @@ func loadDefaultUsers(ctx context.Context, collection *mongo.Collection) error {
 
 	var b []interface{}
 	for _, user := range users {
+		if err = HashPassword(&user); err != nil {
+			return err
+		}
 		b = append(b, user)
 	}
 	result, err := collection.InsertMany(ctx, b)
@@ -72,5 +78,14 @@ func loadDefaultUsers(ctx context.Context, collection *mongo.Collection) error {
 
 	log.Printf("Inserted users: %d\n", len(result.InsertedIDs))
 
+	return nil
+}
+
+func HashPassword(user *model.User) error {
+	hashedPwd, err := bcrypt.GenerateFromPassword([]byte(user.Password), 8)
+	if err != nil {
+		return err
+	}
+	user.Password = string(hashedPwd)
 	return nil
 }

@@ -97,17 +97,29 @@ func (h *AuthHandler) generateJWT(user model.User) (model.JWTOutput, error) {
 	return jwtOutput, nil
 }
 
-func (h *AuthHandler) isInvalidUser(ctx *gin.Context, user *model.User) bool {
-	if err := ctx.ShouldBindJSON(user); err != nil {
+func (h *AuthHandler) isInvalidUser(ctx *gin.Context, reqUser *model.User) bool {
+	if err := ctx.ShouldBindJSON(reqUser); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 		return true
 	}
 
-	//h.db
+	dbUser, err := h.db.Get(h.ctx, reqUser.Username)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return false
+	}
 
-	if user.Username != "admin" || user.Password != "password" {
+	if err = datastore.HashPassword(reqUser); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return false
+	}
+	if reqUser.Password != dbUser.Password {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"error": "Invalid username or password",
 		})
