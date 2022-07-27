@@ -34,28 +34,26 @@ swagger serve --port 8081 --path docs -F swagger ./swagger.json
 curl -X GET 'localhost:8080/books'
 ```
 
+### Search book by tag
+```shell
+curl -X GET 'localhost:8080/books/search?tag=nasa'
+```
+
 ### Create a new book entry
 ```shell
 curl -X POST 'localhost:8080/books' \
---header 'Content-Type: Authorization' \
 --data '{"name": "Moondust", "author": "Andrew Smith", "publisher": "Bloomsbury Publishing PLC", "published_at": {"month":"July", "year":"2009"}, "tags":["space exploration", "astronauts", "nasa"], "review":4.6}'
 ```
 
 ### Update a book entry
 ```shell
 curl -X PUT 'localhost:8080/books/c8n5pb2kq9ndfcl9os7g' \
---header 'Content-Type: Authorization' \
 --data '{"name": "Moondust", "author": "Andrew Smith", "publisher": "Bloomsbury Publishing PLC", "published_at": {"month":"July", "year":"2009"}, "tags":["space exploration", "astronauts", "nasa", "JPL"], "review":4.7}'
 ```
 
 ### Delete a book entry
 ```shell
 curl -X DELETE 'localhost:8080/books/c8n5pb2kq9ndfcl9os7g'
-```
-
-### Search book by tag
-```shell
-curl -X GET 'localhost:8080/books/search?tag=nasa'
 ```
 
 ## Required Docker images
