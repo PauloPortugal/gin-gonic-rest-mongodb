@@ -6,11 +6,12 @@ import (
 
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/model"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
 
-func AuthMiddleware(cfg *viper.Viper) gin.HandlerFunc {
+func AuthJWTMiddleware(cfg *viper.Viper) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		auth := ctx.GetHeader("Authorization")
 		claims := &model.Claims{}
@@ -23,6 +24,20 @@ func AuthMiddleware(cfg *viper.Viper) gin.HandlerFunc {
 		}
 		if tkn == nil || !tkn.Valid {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
+		}
+		ctx.Next()
+	}
+}
+
+func AuthMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		session := sessions.Default(ctx)
+		username := session.Get("username")
+		fmt.Print(username)
+		sessionToken := session.Get("token")
+		if sessionToken == nil {
+			ctx.JSON(http.StatusForbidden, "Not authorized")
+			ctx.Abort()
 		}
 		ctx.Next()
 	}

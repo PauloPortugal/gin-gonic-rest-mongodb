@@ -284,13 +284,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful operation",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/User"
-              }
-            }
+            "description": "Successful operation"
           },
           "400": {
             "description": "invalid input"

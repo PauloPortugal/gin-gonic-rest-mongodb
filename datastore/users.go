@@ -3,18 +3,20 @@ package datastore
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/model"
 	"github.com/spf13/viper"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Users interface {
-	Get(ctx context.Context, username string) (model.User, error)
+	Get(ctx context.Context, username string, password string) (model.User, error)
 }
 
 // BooksClient is the client responsible for querying mongodb
@@ -25,9 +27,28 @@ type UsersClient struct {
 }
 
 //Get returns a user by username
-func (c *UsersClient) Get(ctx context.Context, username string) (model.User, error) {
-	//TODO implement me
-	panic("implement me")
+func (c *UsersClient) Get(ctx context.Context, username string, password string) (model.User, error) {
+	var dbUser model.User
+
+	res := c.col.FindOne(ctx, bson.M{"username": username})
+	if res.Err() != nil {
+		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
+			return dbUser, res.Err()
+		}
+		log.Print(fmt.Errorf("error when finding the dbUser [%s]: %q", username, res.Err()))
+		return dbUser, res.Err()
+	}
+
+	if err := res.Decode(&dbUser); err != nil {
+		log.Print(fmt.Errorf("error decoding [%s]: %q", username, err))
+		return dbUser, err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(password)); err != nil {
+		return dbUser, err
+	}
+
+	return dbUser, nil
 }
 
 // NewUsersClient create a new UsersClient
@@ -61,9 +82,13 @@ func loadDefaultUsers(ctx context.Context, collection *mongo.Collection) error {
 
 	var b []interface{}
 	for _, user := range users {
-		if err = HashPassword(&user); err != nil {
+		hashedPwd, err := HashPassword(user.Password)
+		if err != nil {
 			return err
 		}
+
+		user.Password = hashedPwd
+
 		b = append(b, user)
 	}
 	result, err := collection.InsertMany(ctx, b)
@@ -81,11 +106,10 @@ func loadDefaultUsers(ctx context.Context, collection *mongo.Collection) error {
 	return nil
 }
 
-func HashPassword(user *model.User) error {
-	hashedPwd, err := bcrypt.GenerateFromPassword([]byte(user.Password), 8)
+func HashPassword(plainPwd string) (string, error) {
+	hashedPwd, err := bcrypt.GenerateFromPassword([]byte(plainPwd), 14)
 	if err != nil {
-		return err
+		return "", err
 	}
-	user.Password = string(hashedPwd)
-	return nil
+	return string(hashedPwd), nil
 }

@@ -34,6 +34,8 @@ import (
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/datastore"
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/handlers"
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/middleware"
+	"github.com/gin-contrib/sessions"
+	redisStore "github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/viper"
@@ -47,28 +49,31 @@ func main() {
 
 	cfg := readConfig()
 	mongoDBClient := setupMongoDBClient(ctx, cfg)
-	booksClient := datastore.NewBooksClient(mongoDBClient, cfg)
-	usersClient := datastore.NewUsersClient(mongoDBClient, cfg)
+	mongoBooksClient := datastore.NewBooksClient(mongoDBClient, cfg)
+	mongoUsersClient := datastore.NewUsersClient(mongoDBClient, cfg)
 
 	redisClient := setupRedisClient(ctx, cfg)
-	redisStore := datastore.NewRedisClient(redisClient, cfg)
+	redisBooksClient := datastore.NewRedisClient(redisClient, cfg)
 
-	booksClient.InitBooks(ctx)
-	usersClient.InitUsers(ctx)
+	mongoBooksClient.InitBooks(ctx)
+	mongoUsersClient.InitUsers(ctx)
 
-	booksHandler := handlers.New(ctx, cfg, booksClient, redisStore)
-	authHandler := handlers.NewAuthHandler(ctx, cfg, usersClient, redisStore)
+	booksHandler := handlers.New(ctx, cfg, mongoBooksClient, redisBooksClient)
+	authHandler := handlers.NewAuthHandler(ctx, cfg, mongoUsersClient, redisBooksClient)
 
 	// public endpoints
 	router := gin.Default()
-	router.POST("/signin", authHandler.SignInHandler)
+	cookieStore, _ := redisStore.NewStore(10, "tcp", "localhost:6379", "", []byte(cfg.GetString("redis.sessionSecret")))
+	router.Use(sessions.Sessions("books_api_token", cookieStore))
+	router.POST("/signin", authHandler.SignIn)
 	router.GET("/books", booksHandler.ListBooks)
 	router.GET("/books/:id", booksHandler.GetBook)
 	router.GET("/books/search", booksHandler.SearchBooks)
 
 	// private endpoints
 	authorised := router.Group("/")
-	authorised.Use(middleware.AuthMiddleware(cfg))
+	authorised.Use(middleware.AuthMiddleware())
+	authorised.POST("/signout", authHandler.SignOut)
 	authorised.POST("/books", booksHandler.NewBook)
 	authorised.PUT("/books/:id", booksHandler.UpdateBook)
 	authorised.DELETE("/books/:id", booksHandler.DeleteBook)

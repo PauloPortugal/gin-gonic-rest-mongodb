@@ -12,6 +12,7 @@ mongodb:
 
 redis:
   host: "localhost:6379"
+  sessionSecret: "secret"
 
 auth:
   # this is just for study purpose
