@@ -1,5 +1,5 @@
 # gin-gonic REST API using MongoDB
-A simple Gin Gonic REST API using MongoDB
+A simple Gin Gonic REST API using MongoDB & Redis
 
 This a gin-gonic application, to provide an example on how to create REST API, integrated with 
 MongoDB in Dropwizard with an OpenAPI specification. 
@@ -17,13 +17,16 @@ repository and (a great) book by [Mohamed Labouardy](https://www.labouardy.com/)
  * using [viper](https://github.com/spf13/viper) as a configuration solution
  * using [mongo-db](https://www.mongodb.com/) as NoSQL DB
  * using [redis](https://redis.io/) to cache `GET /books` and `GET /books/:id` resources
- * using [gin sessions](github.com/gin-contrib/sessions v0.0.5) to handle session cookies
+ * using [gin/sessions](github.com/gin-contrib/sessions v0.0.5) to handle session cookies
  * using [jwt-go](github.com/dgrijalva/jwt-go) to provide an implementation of JWT
  * using [x/crypto](golang.org/x/crypto), Go Cryptography package 
  
 ## How to start the Gin-gonic application
 ```shell
-go run pkg/main.go
+go run main.go
+
+# or via docker-compose
+docker-compose up
 ```
 
 ## Swagger OpenAPI specification

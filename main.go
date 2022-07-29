@@ -113,6 +113,7 @@ func corsSetup(router *gin.Engine) {
 }
 
 func readConfig() *viper.Viper {
+	viper.AutomaticEnv()
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
@@ -125,9 +126,9 @@ func readConfig() *viper.Viper {
 
 func setupMongoDBClient(ctx context.Context, cfg *viper.Viper) *mongo.Client {
 	uri := fmt.Sprintf("mongodb://%s:%s@%s/test?authSource=admin",
-		cfg.Get("mongodb.dbuser"),
-		cfg.Get("mongodb.dbpassword"),
-		cfg.Get("mongodb.dbhost"))
+		cfg.GetString("mongodb.dbuser"),
+		cfg.GetString("mongodb.dbpassword"),
+		cfg.GetString("MONGODB.DBHOST"))
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
