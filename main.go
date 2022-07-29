@@ -30,11 +30,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/datastore"
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/handlers"
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/middleware"
 	webHandlers "github.com/PauloPortugal/gin-gonic-rest-mongodb/web/handlers"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
 	redisStore "github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
@@ -88,10 +90,26 @@ func main() {
 	router.GET("/", webHandler.IndexPage)
 	router.GET("/web/book/:id", webHandler.BookPage)
 
+	corsSetup(router)
+	// allow swagger UI requests
+	router.Use(cors.New(cors.Config{
+		AllowAllOrigins:  false,
+		AllowOrigins:     []string{"http://localhost:8081"},
+		AllowMethods:     []string{"GET", "POST", "PUT"},
+		AllowHeaders:     []string{"Origin"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+		AllowWildcard:    true,
+	}))
+
 	err := router.Run()
 	if err != nil {
 		return
 	}
+}
+
+func corsSetup(router *gin.Engine) {
+
 }
 
 func readConfig() *viper.Viper {
