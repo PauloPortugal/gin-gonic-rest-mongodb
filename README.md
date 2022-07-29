@@ -3,15 +3,24 @@ A simple Gin Gonic REST API using MongoDB
 
 This a gin-gonic application, to provide an example on how to create REST API, integrated with 
 MongoDB in Dropwizard with an OpenAPI specification. 
-This example is a simple RESTful API to easily manage books read.
 
+This example is a simple RESTful API to easily manage books I have read.
+
+This is meant to be a playground project for all things gin-gonic, so the design or project structure is not something I 
+would advocate.
+
+This is my take on [Building Distributed Applications in Gin](https://github.com/PacktPublishing/building-distributed-applications-in-gin)
+repository and (a great) book by [Mohamed Labouardy](https://www.labouardy.com/).
+
+**Dependencies used:**
  * using [gin-gonic](https://github.com/gin-gonic/gin#gin-web-framework) v1.7.7 web framework
  * using [viper](https://github.com/spf13/viper) as a configuration solution
  * using [mongo-db](https://www.mongodb.com/) as NoSQL DB
  * using [redis](https://redis.io/) to cache `GET /books` and `GET /books/:id` resources
  * using [gin sessions](github.com/gin-contrib/sessions v0.0.5) to handle session cookies
  * using [jwt-go](github.com/dgrijalva/jwt-go) to provide an implementation of JWT
-
+ * using [x/crypto](golang.org/x/crypto), Go Cryptography package 
+ 
 ## How to start the Gin-gonic application
 ```shell
 go run pkg/main.go
@@ -19,14 +28,9 @@ go run pkg/main.go
 
 ## Swagger OpenAPI specification
 
-* To generate the swagger spec file
+* To generate the swagger spec file and have the API spec served from the Swagger UI
 ```shell
-swagger generate spec -o ./swagger.json
-```
-
-* To have the API specification served from the Swagger UI
-```shell
-swagger serve --port 8081 --path docs -F swagger ./swagger.json
+swagger generate spec --scan-models -o ./swagger.json && swagger serve  --port 8081 --path docs -F swagger ./swagger.json
 ```
 
 
@@ -73,10 +77,4 @@ docker create --name redis -it -p 6379:6379 redis
 ```
 
 ## TODO
-
-1. Improve error handling
-2. Improve logging
-3. Adds users resources and store them on the MongoDB
-4. Return user profile
-5. Create refresh endpoint
-6. Testing
+1. Testing
