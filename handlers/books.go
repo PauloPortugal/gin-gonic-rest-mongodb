@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	datastore2 "github.com/PauloPortugal/gin-gonic-rest-mongodb/datastore"
+	"github.com/PauloPortugal/gin-gonic-rest-mongodb/datastore"
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/model"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -14,11 +14,11 @@ import (
 type BooksHandler struct {
 	ctx          context.Context
 	cfg          *viper.Viper
-	mongoDBStore datastore2.Books
-	redisStore   datastore2.Redis
+	mongoDBStore datastore.Books
+	redisStore   datastore.Redis
 }
 
-func New(ctx context.Context, cfg *viper.Viper, mongoDBStore datastore2.Books, redisStore *datastore2.RedisClient) *BooksHandler {
+func NewBooksHandler(ctx context.Context, cfg *viper.Viper, mongoDBStore datastore.Books, redisStore *datastore.RedisClient) *BooksHandler {
 	return &BooksHandler{
 		ctx:          ctx,
 		cfg:          cfg,

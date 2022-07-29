@@ -9,6 +9,8 @@ This example is a simple RESTful API to easily manage books read.
  * using [viper](https://github.com/spf13/viper) as a configuration solution
  * using [mongo-db](https://www.mongodb.com/) as NoSQL DB
  * using [redis](https://redis.io/) to cache `GET /books` and `GET /books/:id` resources
+ * using [gin sessions](github.com/gin-contrib/sessions v0.0.5) to handle session cookies
+ * using [jwt-go](github.com/dgrijalva/jwt-go) to provide an implementation of JWT
 
 ## How to start the Gin-gonic application
 ```shell

@@ -297,6 +297,29 @@
           }
         }
       }
+    },
+    "/signout": {
+      "post": {
+        "description": "Signs out a user",
+        "tags": [
+          "auth"
+        ],
+        "operationId": "signUser",
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "400": {
+            "description": "invalid input"
+          },
+          "401": {
+            "description": "unauthorised"
+          },
+          "500": {
+            "description": "internal server error"
+          }
+        }
+      }
     }
   },
   "definitions": {
@@ -317,6 +340,12 @@
           "minLength": 3,
           "x-go-name": "Author",
           "example": "Andrew Smith"
+        },
+        "image_path": {
+          "description": "the image path for this book cover",
+          "type": "string",
+          "x-go-name": "ImagePath",
+          "example": "\"/assets/images/book_cover.jpg\""
         },
         "name": {
           "description": "the name of the book",

@@ -1,0 +1,33 @@
+<html>
+
+<head>
+    <title>{{ .book.Name }} - Books</title>
+    <link rel="stylesheet" href="/assets/css/app.css">
+</head>
+
+    <body>
+        {{template "navbar.tmpl"}}
+
+        <section class="container Book">
+            <div class="row">
+                <div class="col-md-3">
+                    <img src="{{ .book.ImagePath }}" class="card-img-top">
+                </div>
+                <div class="col-md-9">
+                    <h4>{{ .book.Name }}</h4>
+                    <ul>
+                        <li>Author: {{ .book.Author }}</li>
+                        <li>Publisher: {{ .book.Publisher }}</li>
+                        <li>Published Date: {{ .book.PublishedAt.Month }} {{ .book.PublishedAt.Year }}</li>
+                        <li>Review : {{ .book.Review }}</li>
+                        <li>Tags :
+                            {{range .book.Tags}}
+                                <br \> - {{ . }}
+                            {{end}}
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </body>
+</html>

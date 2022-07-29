@@ -29,7 +29,7 @@ func AuthJWTMiddleware(cfg *viper.Viper) gin.HandlerFunc {
 	}
 }
 
-func AuthMiddleware() gin.HandlerFunc {
+func AuthCookieMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		session := sessions.Default(ctx)
 		username := session.Get("username")

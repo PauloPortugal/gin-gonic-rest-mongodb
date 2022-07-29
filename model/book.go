@@ -42,6 +42,10 @@ type Book struct {
 	// example: ["space exploration", "astronauts", "nasa"]
 	Tags []string `json:"tags" bson:"tags"`
 
+	// the image path for this book cover
+	// example: "/assets/images/book_cover.jpg"
+	ImagePath string `json:"image_path" bson:"image_path"`
+
 	// Score review
 	// required: true
 	// min: 0

@@ -1,0 +1,26 @@
+<html>
+
+    <head>
+        <title>Books</title>
+        <link rel="stylesheet" href="/assets/css/app.css">
+    </head>
+
+    <body>
+        {{template "navbar.tmpl"}}
+        <section class="container">
+            <div class="row">
+                {{range .books}}
+                    <div class="col-md-3">
+                        <div class="card" style="width: 18rem;">
+                            <img src="{{ .ImagePath }}" class="card-img-top" alt="{{ .Name }}">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ .Name }}, by {{ .Author }}</h5>
+                                <a href="/web/book/{{ .ID.Hex }}" class="btn btn-primary btn-sm">See book</a>
+                            </div>
+                        </div>
+                    </div>
+                {{end}}
+            </div>
+        </section>
+    </body>
+</html>
