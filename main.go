@@ -128,7 +128,7 @@ func setupMongoDBClient(ctx context.Context, cfg *viper.Viper) *mongo.Client {
 	uri := fmt.Sprintf("mongodb://%s:%s@%s/test?authSource=admin",
 		cfg.GetString("mongodb.dbuser"),
 		cfg.GetString("mongodb.dbpassword"),
-		cfg.GetString("MONGODB.DBHOST"))
+		cfg.GetString("mongodb.dbhost"))
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
