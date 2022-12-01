@@ -30,15 +30,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/datastore"
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/handlers"
-	"github.com/PauloPortugal/gin-gonic-rest-mongodb/middleware"
-	webHandlers "github.com/PauloPortugal/gin-gonic-rest-mongodb/web/handlers"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/sessions"
-	redisStore "github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/viper"
@@ -49,67 +43,22 @@ import (
 
 func main() {
 	ctx := context.Background()
-
 	cfg := readConfig()
-	router := gin.Default()
 
 	mongoDBClient := setupMongoDBClient(ctx, cfg)
 	mongoBooksClient := datastore.NewBooksClient(mongoDBClient, cfg)
 	mongoUsersClient := datastore.NewUsersClient(mongoDBClient, cfg)
+	mongoBooksClient.InitBooks(ctx)
+	mongoUsersClient.InitUsers(ctx)
 
 	redisClient := setupRedisClient(ctx, cfg)
 	redisBooksClient := datastore.NewRedisClient(redisClient, cfg)
 
-	mongoBooksClient.InitBooks(ctx)
-	mongoUsersClient.InitUsers(ctx)
+	router := gin.Default()
 
-	booksHandler := handlers.NewBooksHandler(ctx, cfg, mongoBooksClient, redisBooksClient)
-	authHandler := handlers.NewAuthHandler(ctx, cfg, mongoUsersClient, redisBooksClient)
-
-	// API public endpoints
-	cookieStore, _ := redisStore.NewStore(10, "tcp", "localhost:6379", "", []byte(cfg.GetString("redis.sessionSecret")))
-	router.Use(sessions.Sessions("books_api_token", cookieStore))
-	router.POST("/signin", authHandler.SignIn)
-	router.GET("/books", booksHandler.ListBooks)
-	router.GET("/books/:id", booksHandler.GetBook)
-	router.GET("/books/search", booksHandler.SearchBooks)
-
-	// API private endpoints
-	authorised := router.Group("/")
-	authorised.Use(middleware.AuthCookieMiddleware())
-	authorised.POST("/signout", authHandler.SignOut)
-	authorised.POST("/books", booksHandler.NewBook)
-	authorised.PUT("/books/:id", booksHandler.UpdateBook)
-	authorised.DELETE("/books/:id", booksHandler.DeleteBook)
-
-	// web endpoints
-	router.LoadHTMLGlob("web/templates/*")
-	router.StaticFile("404.html", "./web/static/404.html")
-	webHandler := webHandlers.NewWebHandler(ctx, cfg, mongoBooksClient, redisBooksClient)
-	router.Static("/assets", "web/assets")
-	router.GET("/", webHandler.IndexPage)
-	router.GET("/web/book/:id", webHandler.BookPage)
-
-	corsSetup(router)
-	// allow swagger UI requests
-	router.Use(cors.New(cors.Config{
-		AllowAllOrigins:  false,
-		AllowOrigins:     []string{"http://localhost:8081"},
-		AllowMethods:     []string{"GET", "POST", "PUT"},
-		AllowHeaders:     []string{"Origin"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-		AllowWildcard:    true,
-	}))
-
-	err := router.Run()
-	if err != nil {
+	if err := handlers.Setup(ctx, cfg, router, mongoBooksClient, mongoUsersClient, redisBooksClient).Run(); err != nil {
 		return
 	}
-}
-
-func corsSetup(router *gin.Engine) {
-
 }
 
 func readConfig() *viper.Viper {
