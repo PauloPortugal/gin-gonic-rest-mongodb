@@ -1,0 +1,6 @@
+# github.com/gorilla/sessions v1.2.1
+sonatype-2021-4899
+
+# [CVE-2022-29153] CWE-918: Server-Side Request Forgery (SSRF)
+# pkg:golang/github.com/hashicorp/consul/api@v1.15.3
+CVE-2022-29153

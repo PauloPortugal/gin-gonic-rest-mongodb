@@ -20,6 +20,7 @@ repository and (a great) book by [Mohamed Labouardy](https://www.labouardy.com/)
  * using [gin/sessions](github.com/gin-contrib/sessions v0.0.5) to handle session cookies
  * using [jwt-go](github.com/dgrijalva/jwt-go) to provide an implementation of JWT
  * using [x/crypto](golang.org/x/crypto), Go Cryptography package 
+ * using [nancy](https://github.com/sonatype-nexus-community/nancy), tool to check for vulnerabilities in your Golang dependencies
  
 ## How to start the Gin-gonic application
 ```shell
@@ -81,3 +82,4 @@ docker create --name redis -it -p 6379:6379 redis
 
 ## TODO
 1. Testing
+2. Makefile docs
