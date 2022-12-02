@@ -24,7 +24,7 @@ type WebHandler struct {
 	redisStore   datastore.Redis
 }
 
-func NewWebHandler(c context.Context, cfg *viper.Viper, booksCli *datastore.BooksClient, redisCli *datastore.RedisClient) *WebHandler {
+func NewWebHandler(c context.Context, cfg *viper.Viper, booksCli datastore.Books, redisCli datastore.Redis) *WebHandler {
 	return &WebHandler{
 		c:            c,
 		cfg:          cfg,

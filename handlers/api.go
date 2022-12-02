@@ -14,9 +14,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-func Setup(ctx context.Context, cfg *viper.Viper, router *gin.Engine,
-	mongoBooksClient *datastore.BooksClient, mongoUsersClient *datastore.UsersClient,
-	redisBooksClient *datastore.RedisClient) *gin.Engine {
+func Setup(ctx context.Context, cfg *viper.Viper, router *gin.Engine, pathToTemplates string,
+	mongoBooksClient datastore.Books, mongoUsersClient datastore.Users,
+	redisBooksClient datastore.Redis) *gin.Engine {
 
 	booksHandler := NewBooksHandler(ctx, cfg, mongoBooksClient, redisBooksClient)
 	authHandler := NewAuthHandler(ctx, cfg, mongoUsersClient, redisBooksClient)
@@ -38,7 +38,7 @@ func Setup(ctx context.Context, cfg *viper.Viper, router *gin.Engine,
 	authorised.DELETE("/books/:id", booksHandler.DeleteBook)
 
 	// web endpoints
-	router.LoadHTMLGlob("web/templates/*")
+	router.LoadHTMLGlob(pathToTemplates)
 	router.StaticFile("404.html", "./web/static/404.html")
 	webHandler := webHandlers.NewWebHandler(ctx, cfg, mongoBooksClient, redisBooksClient)
 	router.Static("/assets", "web/assets")

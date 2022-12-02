@@ -22,7 +22,7 @@ type AuthHandler struct {
 	redisStore datastore.Redis
 }
 
-func NewAuthHandler(ctx context.Context, cfg *viper.Viper, store *datastore.UsersClient, redisStore *datastore.RedisClient) *AuthHandler {
+func NewAuthHandler(ctx context.Context, cfg *viper.Viper, store datastore.Users, redisStore datastore.Redis) *AuthHandler {
 	return &AuthHandler{
 		ctx:        ctx,
 		cfg:        cfg,
@@ -39,25 +39,27 @@ func NewAuthHandler(ctx context.Context, cfg *viper.Viper, store *datastore.User
 // produces:
 // - application/json
 // parameters:
-// - name: credentials
-//   in: body
-//   name: User
-//   description: The user credentials
-//   schema:
-//         "$ref": "#/definitions/User"
+//   - name: credentials
+//     in: body
+//     name: User
+//     description: The user credentials
+//     schema:
+//     "$ref": "#/definitions/User"
+//
 // responses:
-//     '200':
-//         description: Successful operation
-//         parameters:
-//         - name: books_api_token
-//           in: cookie
-//           description: The user's session cookie/token
-//     '400':
-//         description: invalid input
-//     '401':
-//         description: unauthorised
-//     '500':
-//         description: internal server error
+//
+//	'200':
+//	    description: Successful operation
+//	    parameters:
+//	    - name: books_api_token
+//	      in: cookie
+//	      description: The user's session cookie/token
+//	'400':
+//	    description: invalid input
+//	'401':
+//	    description: unauthorised
+//	'500':
+//	    description: internal server error
 func (h *AuthHandler) SignIn(ctx *gin.Context) {
 	var user model.User
 
@@ -84,14 +86,15 @@ func (h *AuthHandler) SignIn(ctx *gin.Context) {
 // Signs out a user
 // ---
 // responses:
-//     '200':
-//         description: Successful operation
-//     '400':
-//         description: invalid input
-//     '401':
-//         description: unauthorised
-//     '500':
-//         description: internal server error
+//
+//	'200':
+//	    description: Successful operation
+//	'400':
+//	    description: invalid input
+//	'401':
+//	    description: unauthorised
+//	'500':
+//	    description: internal server error
 func (h *AuthHandler) SignOut(ctx *gin.Context) {
 	session := sessions.Default(ctx)
 	session.Clear()

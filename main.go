@@ -2,26 +2,26 @@
 
 // Documentation of our Books API
 //
-//	   Simple Gin API
+//		   Simple Gin API
 //
-//     Schemes: http
-//     Host: localhost:8080
-//     BasePath: /
-//     Version: 1.0.0
-//     Contact: Test User <some_email@example.com> http://github.com/
+//	    Schemes: http
+//	    Host: localhost:8080
+//	    BasePath: /
+//	    Version: 1.0.0
+//	    Contact: Test User <some_email@example.com> http://github.com/
 //
-//     Consumes:
-//     - application/json
+//	    Consumes:
+//	    - application/json
 //
-//     Produces:
-//     - application/json
+//	    Produces:
+//	    - application/json
 //
-//     Security:
-//     - basic
+//	    Security:
+//	    - basic
 //
-//    SecurityDefinitions:
-//    basic:
-//      type: basic
+//	   SecurityDefinitions:
+//	   basic:
+//	     type: basic
 //
 // swagger:meta
 package main
@@ -41,6 +41,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+const pathToTemplates = "web/templates/*"
+
 func main() {
 	ctx := context.Background()
 	cfg := readConfig()
@@ -56,7 +58,7 @@ func main() {
 
 	router := gin.Default()
 
-	if err := handlers.Setup(ctx, cfg, router, mongoBooksClient, mongoUsersClient, redisBooksClient).Run(); err != nil {
+	if err := handlers.Setup(ctx, cfg, router, pathToTemplates, mongoBooksClient, mongoUsersClient, redisBooksClient).Run(); err != nil {
 		return
 	}
 }
@@ -102,7 +104,7 @@ func setupRedisClient(ctx context.Context, cfg *viper.Viper) *redis.Client {
 	client := redis.NewClient(redisOpt)
 
 	status := client.Ping(ctx)
-	log.Print(fmt.Sprintf("redis status: %q", status))
+	log.Printf("redis status: %q", status)
 
 	return client
 }
