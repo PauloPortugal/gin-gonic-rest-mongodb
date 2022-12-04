@@ -343,5 +343,5 @@ func (handler *BooksHandler) GetBook(ctx *gin.Context) {
 		}
 	}
 
-	ctx.JSON(http.StatusCreated, book)
+	ctx.JSON(http.StatusOK, book)
 }
