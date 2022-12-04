@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,9 +19,10 @@ import (
 
 const pathToTemplates = "../web/templates/*"
 
-func createRouter(booksClientMock *booksMock, usersClientMock *usersMock, redisClientMock *redisMock) *gin.Engine {
-	gin.SetMode(gin.ReleaseMode)
-	router := Setup(context.Background(), viper.GetViper(), gin.New(), pathToTemplates, booksClientMock, usersClientMock, redisClientMock)
+func createRouter(booksClientMock *booksMock, usersClientMock *usersMock, redisClientMock *redisMock, m Middleware) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	router := Setup(context.Background(), viper.GetViper(), gin.New(), pathToTemplates,
+		booksClientMock, usersClientMock, redisClientMock, m)
 	return router
 }
 
@@ -41,6 +43,12 @@ func getBook() model.Book {
 	}
 }
 
+func mockMiddleware() *MiddlewareMock {
+	return &MiddlewareMock{AuthCookieMiddlewareFunc: func() gin.HandlerFunc {
+		return func(ctx *gin.Context) { ctx.Next() }
+	}}
+}
+
 func TestBooksHandler_ListBooks(t *testing.T) {
 	var books []model.Book
 	var errorRes map[string]string
@@ -58,6 +66,7 @@ func TestBooksHandler_ListBooks(t *testing.T) {
 						return []model.Book{getBook()}, nil
 					},
 				},
+				mockMiddleware(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -85,6 +94,7 @@ func TestBooksHandler_ListBooks(t *testing.T) {
 						return nil, fmt.Errorf("some RedisDB error")
 					},
 				},
+				mockMiddleware(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -115,6 +125,7 @@ func TestBooksHandler_ListBooks(t *testing.T) {
 						bmock,
 						&usersMock{},
 						rmock,
+						mockMiddleware(),
 					)
 
 					router.ServeHTTP(w, req)
@@ -139,6 +150,7 @@ func TestBooksHandler_ListBooks(t *testing.T) {
 						bmock,
 						&usersMock{},
 						rmock,
+						mockMiddleware(),
 					)
 
 					router.ServeHTTP(w, req)
@@ -161,6 +173,7 @@ func TestBooksHandler_ListBooks(t *testing.T) {
 					}},
 					&usersMock{},
 					rmock,
+					mockMiddleware(),
 				)
 
 				router.ServeHTTP(w, req)
@@ -195,6 +208,7 @@ func TestBooksHandler_SearchBooks(t *testing.T) {
 				},
 				&usersMock{},
 				&redisMock{},
+				mockMiddleware(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -220,6 +234,7 @@ func TestBooksHandler_SearchBooks(t *testing.T) {
 				}},
 				&usersMock{},
 				&redisMock{},
+				mockMiddleware(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -253,6 +268,7 @@ func TestBooksHandler_GetBook(t *testing.T) {
 						return getBook(), nil
 					},
 				},
+				mockMiddleware(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -276,6 +292,7 @@ func TestBooksHandler_GetBook(t *testing.T) {
 						return model.Book{}, fmt.Errorf("some RedisDB error")
 					},
 				},
+				mockMiddleware(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -308,6 +325,7 @@ func TestBooksHandler_GetBook(t *testing.T) {
 						bmock,
 						&usersMock{},
 						rmock,
+						mockMiddleware(),
 					)
 
 					router.ServeHTTP(w, req)
@@ -330,6 +348,7 @@ func TestBooksHandler_GetBook(t *testing.T) {
 						bmock,
 						&usersMock{},
 						rmock,
+						mockMiddleware(),
 					)
 
 					router.ServeHTTP(w, req)
@@ -352,6 +371,7 @@ func TestBooksHandler_GetBook(t *testing.T) {
 					}},
 					&usersMock{},
 					rmock,
+					mockMiddleware(),
 				)
 
 				router.ServeHTTP(w, req)
@@ -373,6 +393,7 @@ func TestBooksHandler_GetBook(t *testing.T) {
 					}},
 					&usersMock{},
 					rmock,
+					mockMiddleware(),
 				)
 
 				router.ServeHTTP(w, req)
@@ -396,10 +417,9 @@ func TestBooksHandler_DeleteBook(t *testing.T) {
 		Convey("When MongoDB has book and successfully deletes the book", func() {
 			router := createRouter(
 				&booksMock{DeleteBookFunc: func(ctx context.Context, id string) (int, error) { return 1, nil }},
-				&usersMock{GetFunc: func(ctx context.Context, username string, password string) (model.User, error) {
-					return model.User{Password: "password", Username: "username"}, nil
-				}},
+				&usersMock{},
 				&redisMock{DeleteEntryFunc: func(ctx context.Context, id string) {}},
+				mockMiddleware(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -419,6 +439,7 @@ func TestBooksHandler_DeleteBook(t *testing.T) {
 				&booksMock{DeleteBookFunc: func(ctx context.Context, id string) (int, error) { return 0, nil }},
 				&usersMock{},
 				&redisMock{DeleteEntryFunc: func(ctx context.Context, id string) {}},
+				mockMiddleware(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -438,12 +459,179 @@ func TestBooksHandler_DeleteBook(t *testing.T) {
 				&booksMock{DeleteBookFunc: func(ctx context.Context, id string) (int, error) { return 0, fmt.Errorf("some MongoDB error") }},
 				&usersMock{},
 				&redisMock{},
+				mockMiddleware(),
 			)
 
 			router.ServeHTTP(w, req)
 			_ = json.Unmarshal(w.Body.Bytes(), &bodyMsg)
 
 			Convey("Then 404 Not Found is returned", func() {
+				So(w.Code, ShouldEqual, http.StatusInternalServerError)
+			})
+
+			Convey("And response body has the expected error message", func() {
+				So(bodyMsg["error"], ShouldEqual, "some MongoDB error")
+			})
+		})
+	})
+}
+
+func TestBooksHandler_UpdateBook(t *testing.T) {
+	var bodyMsg map[string]string
+	var book model.Book
+
+	Convey("Given PUT /books/{id}", t, func() {
+		w := httptest.NewRecorder()
+		data, _ := json.Marshal(getBook())
+
+		req, _ := http.NewRequest(http.MethodPut, "/books/some-id", bytes.NewReader(data))
+
+		Convey("When MongoDB successfully updates the book", func() {
+			router := createRouter(
+				&booksMock{UpdateBookFunc: func(ctx context.Context, id string, book model.Book) (int, error) {
+					return 1, nil
+				}},
+				&usersMock{},
+				&redisMock{DeleteEntryFunc: func(ctx context.Context, id string) {}},
+				mockMiddleware(),
+			)
+
+			router.ServeHTTP(w, req)
+			_ = json.Unmarshal(w.Body.Bytes(), &book)
+
+			Convey("Then 200 OK is returned", func() {
+				So(w.Code, ShouldEqual, http.StatusOK)
+			})
+
+			Convey("And it is the expected book", func() {
+				So(book.Name, ShouldEqual, getBook().Name)
+			})
+		})
+
+		Convey("When request payload is incorrect", func() {
+			router := createRouter(
+				&booksMock{},
+				&usersMock{},
+				&redisMock{},
+				mockMiddleware(),
+			)
+			data, _ := json.Marshal("incorrect payload")
+			req, _ := http.NewRequest(http.MethodPut, "/books/some-id", bytes.NewReader(data))
+			router.ServeHTTP(w, req)
+
+			Convey("Then 400 Bad Request is returned", func() {
+				So(w.Code, ShouldEqual, http.StatusBadRequest)
+			})
+		})
+
+		Convey("When MongoDB returns an error", func() {
+			router := createRouter(
+				&booksMock{UpdateBookFunc: func(ctx context.Context, id string, book model.Book) (int, error) {
+					return 0, fmt.Errorf("some MongoDB error")
+				}},
+				&usersMock{},
+				&redisMock{},
+				mockMiddleware(),
+			)
+
+			router.ServeHTTP(w, req)
+			_ = json.Unmarshal(w.Body.Bytes(), &bodyMsg)
+
+			Convey("Then 500 Internal Server Error is returned", func() {
+				So(w.Code, ShouldEqual, http.StatusInternalServerError)
+			})
+
+			Convey("And response body has the expected error message", func() {
+				So(bodyMsg["error"], ShouldEqual, "some MongoDB error")
+			})
+		})
+
+		Convey("When MongoDB does not have the book entry", func() {
+			router := createRouter(
+				&booksMock{UpdateBookFunc: func(ctx context.Context, id string, book model.Book) (int, error) {
+					return 0, nil
+				}},
+				&usersMock{},
+				&redisMock{},
+				mockMiddleware(),
+			)
+
+			router.ServeHTTP(w, req)
+			_ = json.Unmarshal(w.Body.Bytes(), &bodyMsg)
+
+			Convey("Then 404 Not Found is returned", func() {
+				So(w.Code, ShouldEqual, http.StatusNotFound)
+			})
+
+			Convey("And response body has the expected error message", func() {
+				So(bodyMsg["error"], ShouldEqual, "book not found")
+			})
+		})
+	})
+}
+
+func TestBooksHandler_NewBook(t *testing.T) {
+	var bodyMsg map[string]string
+	var book model.Book
+
+	Convey("Given POST /books", t, func() {
+		data, _ := json.Marshal(getBook())
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest(http.MethodPost, "/books", bytes.NewReader(data))
+
+		Convey("When MongoDB successfully creates book", func() {
+			router := createRouter(
+				&booksMock{AddBookFunc: func(ctx context.Context, book *model.Book) error {
+					return nil
+				}},
+				&usersMock{},
+				&redisMock{DeleteEntryFunc: func(ctx context.Context, id string) {}},
+				mockMiddleware(),
+			)
+
+			router.ServeHTTP(w, req)
+			_ = json.Unmarshal(w.Body.Bytes(), &book)
+
+			Convey("Then 201 Created is returned", func() {
+				So(w.Code, ShouldEqual, http.StatusCreated)
+			})
+
+			Convey("And it is the expected book", func() {
+				So(book.Name, ShouldEqual, getBook().Name)
+			})
+		})
+
+		Convey("When request payload is incorrect", func() {
+			router := createRouter(
+				&booksMock{},
+				&usersMock{},
+				&redisMock{},
+				mockMiddleware(),
+			)
+			data, _ := json.Marshal("incorrect payload")
+			req, _ := http.NewRequest(http.MethodPost, "/books", bytes.NewReader(data))
+			router.ServeHTTP(w, req)
+
+			Convey("Then 400 Bad Request is returned", func() {
+				So(w.Code, ShouldEqual, http.StatusBadRequest)
+			})
+		})
+
+		Convey("When MongoDB returns an error", func() {
+			router := createRouter(
+				&booksMock{AddBookFunc: func(ctx context.Context, book *model.Book) error {
+					return fmt.Errorf("some MongoDB error")
+				}},
+				&usersMock{},
+				&redisMock{},
+				mockMiddleware(),
+			)
+
+			router.ServeHTTP(w, req)
+			_ = json.Unmarshal(w.Body.Bytes(), &bodyMsg)
+
+			Convey("Then 500 Internal Server Error is returned", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
 			})
 

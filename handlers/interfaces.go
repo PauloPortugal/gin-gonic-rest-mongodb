@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/model"
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 //go:generate moq -out interfaces_books_moq_test.go . books
@@ -28,4 +30,10 @@ type redis interface {
 //go:generate moq -out interfaces_users_moq_test.go . users
 type users interface {
 	Get(ctx context.Context, username string, password string) (model.User, error)
+}
+
+//go:generate moq -out interfaces_middleware_moq_test.go . Middleware
+type Middleware interface {
+	AuthJWTMiddleware(cfg *viper.Viper) gin.HandlerFunc
+	AuthCookieMiddleware() gin.HandlerFunc
 }

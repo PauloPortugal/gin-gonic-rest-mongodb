@@ -33,6 +33,7 @@ import (
 
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/datastore"
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/handlers"
+	"github.com/PauloPortugal/gin-gonic-rest-mongodb/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/viper"
@@ -55,10 +56,11 @@ func main() {
 
 	redisClient := setupRedisClient(ctx, cfg)
 	redisBooksClient := datastore.NewRedisClient(redisClient, cfg)
+	m := middleware.Client{}
 
 	router := gin.Default()
 
-	if err := handlers.Setup(ctx, cfg, router, pathToTemplates, mongoBooksClient, mongoUsersClient, redisBooksClient).Run(); err != nil {
+	if err := handlers.Setup(ctx, cfg, router, pathToTemplates, mongoBooksClient, mongoUsersClient, redisBooksClient, m).Run(); err != nil {
 		return
 	}
 }

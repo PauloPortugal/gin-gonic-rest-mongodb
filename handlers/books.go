@@ -221,6 +221,9 @@ func (handler *BooksHandler) UpdateBook(ctx *gin.Context) {
 
 	modifiedCount, err := handler.mongoDBStore.UpdateBook(handler.ctx, id, book)
 	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 

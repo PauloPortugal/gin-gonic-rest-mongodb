@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/datastore"
-	"github.com/PauloPortugal/gin-gonic-rest-mongodb/middleware"
 	webHandlers "github.com/PauloPortugal/gin-gonic-rest-mongodb/web/handlers"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
@@ -14,9 +13,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func Setup(ctx context.Context, cfg *viper.Viper, router *gin.Engine, pathToTemplates string,
-	mongoBooksClient datastore.Books, mongoUsersClient datastore.Users,
-	redisBooksClient datastore.Redis) *gin.Engine {
+func Setup(ctx context.Context, cfg *viper.Viper, router *gin.Engine, pathToTemplates string, mongoBooksClient datastore.Books, mongoUsersClient datastore.Users, redisBooksClient datastore.Redis, m Middleware) *gin.Engine {
 
 	booksHandler := NewBooksHandler(ctx, cfg, mongoBooksClient, redisBooksClient)
 	authHandler := NewAuthHandler(ctx, cfg, mongoUsersClient, redisBooksClient)
@@ -31,7 +28,7 @@ func Setup(ctx context.Context, cfg *viper.Viper, router *gin.Engine, pathToTemp
 
 	// API private endpoints
 	authorised := router.Group("/")
-	authorised.Use(middleware.AuthCookieMiddleware())
+	authorised.Use(m.AuthCookieMiddleware())
 	authorised.POST("/signout", authHandler.SignOut)
 	authorised.POST("/books", booksHandler.NewBook)
 	authorised.PUT("/books/:id", booksHandler.UpdateBook)
