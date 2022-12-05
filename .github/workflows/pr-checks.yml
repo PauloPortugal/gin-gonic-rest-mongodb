@@ -33,5 +33,11 @@ jobs:
       - name: Build
         run: go build -v ./...
 
+      - name: Bring docker compose up
+        run: make local
+
       - name: Test
-        run: 	go test --cover -v ./...
+        run: 	make test
+
+      - name: Bring docker compose down
+        run: make down
