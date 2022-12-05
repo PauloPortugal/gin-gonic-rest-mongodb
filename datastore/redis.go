@@ -82,7 +82,7 @@ func (c *RedisClient) SetBooks(ctx context.Context, books []model.Book) error {
 	}
 
 	set := c.client.Set(ctx, "books", string(data), time.Hour)
-	log.Print(fmt.Errorf("redis set status: %w", set))
+	log.Print(fmt.Errorf("redis set status: %v", set))
 	return nil
 }
 
@@ -95,7 +95,7 @@ func (c *RedisClient) SetBook(ctx context.Context, id string, book model.Book) e
 	}
 
 	set := c.client.Set(ctx, id, string(data), time.Hour)
-	log.Print(fmt.Errorf("redis set status: %w", set))
+	log.Print(fmt.Errorf("redis set status: %v", set))
 	return nil
 }
 

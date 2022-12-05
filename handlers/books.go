@@ -18,7 +18,7 @@ type BooksHandler struct {
 	redisStore   datastore.Redis
 }
 
-func NewBooksHandler(ctx context.Context, cfg *viper.Viper, mongoDBStore datastore.Books, redisStore *datastore.RedisClient) *BooksHandler {
+func NewBooksHandler(ctx context.Context, cfg *viper.Viper, mongoDBStore datastore.Books, redisStore datastore.Redis) *BooksHandler {
 	return &BooksHandler{
 		ctx:          ctx,
 		cfg:          cfg,
@@ -35,30 +35,32 @@ func NewBooksHandler(ctx context.Context, cfg *viper.Viper, mongoDBStore datasto
 // produces:
 // - application/json
 // parameters:
-// - name: book
-//   in: body
-//   name: Book
-//   description: The new book to create
-//   schema:
-//         "$ref": "#/definitions/Book"
-// - name: Authorization
-//   in: header
-//   name: Authorization
-//   description: Auth header, where the JWT token should be provided
-//   type: string
-//   example: someJWTToken
-//   required: true
+//   - name: book
+//     in: body
+//     name: Book
+//     description: The new book to create
+//     schema:
+//     "$ref": "#/definitions/Book"
+//   - name: Authorization
+//     in: header
+//     name: Authorization
+//     description: Auth header, where the JWT token should be provided
+//     type: string
+//     example: someJWTToken
+//     required: true
+//
 // responses:
-//     '201':
-//         description: Successful operation
-//         schema:
-//           type: array
-//           items:
-//                "$ref": "#/definitions/Book"
-//     '400':
-//         description: invalid input
-//     '500':
-//         description: internal server error
+//
+//	'201':
+//	    description: Successful operation
+//	    schema:
+//	      type: array
+//	      items:
+//	           "$ref": "#/definitions/Book"
+//	'400':
+//	    description: invalid input
+//	'500':
+//	    description: internal server error
 func (handler *BooksHandler) NewBook(ctx *gin.Context) {
 	var book *model.Book
 	if err := ctx.ShouldBindJSON(&book); err != nil {
@@ -88,14 +90,15 @@ func (handler *BooksHandler) NewBook(ctx *gin.Context) {
 // produces:
 // - application/json
 // responses:
-//     '200':
-//         description: Successful operation
-//         schema:
-//           type: array
-//           items:
-//                "$ref": "#/definitions/Book"
-//     '500':
-//         description: internal server error
+//
+//	'200':
+//	    description: Successful operation
+//	    schema:
+//	      type: array
+//	      items:
+//	           "$ref": "#/definitions/Book"
+//	'500':
+//	    description: internal server error
 func (handler *BooksHandler) ListBooks(ctx *gin.Context) {
 	// first query Redis/cache
 	books, err := handler.redisStore.GetBooks(handler.ctx)
@@ -131,22 +134,24 @@ func (handler *BooksHandler) ListBooks(ctx *gin.Context) {
 // Filters list of books by tag
 // ---
 // parameters:
-// - name: tag
-//   in: query
-//   description: tag to filter on
-//   required: false
-//   type: string
+//   - name: tag
+//     in: query
+//     description: tag to filter on
+//     required: false
+//     type: string
+//
 // consumes:
 // - application/json
 // produces:
 // - application/json
 // responses:
-//     '200':
-//         description: Successful operation
-//         schema:
-//           type: array
-//           items:
-//                "$ref": "#/definitions/Book"
+//
+//	'200':
+//	    description: Successful operation
+//	    schema:
+//	      type: array
+//	      items:
+//	           "$ref": "#/definitions/Book"
 func (handler *BooksHandler) SearchBooks(ctx *gin.Context) {
 	tag := ctx.Query("tag")
 
@@ -165,42 +170,45 @@ func (handler *BooksHandler) SearchBooks(ctx *gin.Context) {
 // Update an existing book
 // ---
 // parameters:
-// - name: id
-//   in: path
-//   description: ID of the book
-//   required: true
-//   type: string
+//   - name: id
+//     in: path
+//     description: ID of the book
+//     required: true
+//     type: string
+//
 // consumes:
 // - application/json
 // produces:
 // - application/json
 // parameters:
-// - name: book
-//   in: body
-//   name: Book
-//   description: The new book to create
-//   schema:
-//         "$ref": "#/definitions/Book"
-// - name: Authorization
-//   in: header
-//   name: Authorization
-//   description: Auth header, where the JWT token should be provided
-//   type: string
-//   example: someJWTToken
-//   required: true
+//   - name: book
+//     in: body
+//     name: Book
+//     description: The new book to create
+//     schema:
+//     "$ref": "#/definitions/Book"
+//   - name: Authorization
+//     in: header
+//     name: Authorization
+//     description: Auth header, where the JWT token should be provided
+//     type: string
+//     example: someJWTToken
+//     required: true
+//
 // responses:
-//     '200':
-//         description: Successful operation
-//         schema:
-//           type: array
-//           items:
-//                "$ref": "#/definitions/Book"
-//     '400':
-//         description: Invalid input
-//     '404':
-//         description: book not found
-//     '500':
-//         description: internal server error
+//
+//	'200':
+//	    description: Successful operation
+//	    schema:
+//	      type: array
+//	      items:
+//	           "$ref": "#/definitions/Book"
+//	'400':
+//	    description: Invalid input
+//	'404':
+//	    description: book not found
+//	'500':
+//	    description: internal server error
 func (handler *BooksHandler) UpdateBook(ctx *gin.Context) {
 	id := ctx.Param("id")
 	var book model.Book
@@ -213,6 +221,9 @@ func (handler *BooksHandler) UpdateBook(ctx *gin.Context) {
 
 	modifiedCount, err := handler.mongoDBStore.UpdateBook(handler.ctx, id, book)
 	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
@@ -232,27 +243,29 @@ func (handler *BooksHandler) UpdateBook(ctx *gin.Context) {
 // Delete an existing book
 // ---
 // parameters:
-// - name: id
-//   in: path
-//   description: ID of the book
-//   required: true
-//   type: string
-// - name: Authorization
-//   in: header
-//   name: Authorization
-//   description: Auth header, where the JWT token should be provided
-//   type: string
-//   example: someJWTToken
-//   required: true
+//   - name: id
+//     in: path
+//     description: ID of the book
+//     required: true
+//     type: string
+//   - name: Authorization
+//     in: header
+//     name: Authorization
+//     description: Auth header, where the JWT token should be provided
+//     type: string
+//     example: someJWTToken
+//     required: true
+//
 // consumes:
 // - application/json
 // produces:
 // - application/json
 // responses:
-//     '200':
-//         message: "Book has been deleted"
-//     '404':
-//         error: "book not found"
+//
+//	'200':
+//	    message: "Book has been deleted"
+//	'404':
+//	    error: "book not found"
 func (handler *BooksHandler) DeleteBook(ctx *gin.Context) {
 	id := ctx.Param("id")
 
@@ -282,22 +295,24 @@ func (handler *BooksHandler) DeleteBook(ctx *gin.Context) {
 // Returns a book
 // ---
 // parameters:
-// - name: id
-//   in: path
-//   description: ID of the book
-//   required: true
-//   type: string
+//   - name: id
+//     in: path
+//     description: ID of the book
+//     required: true
+//     type: string
+//
 // consumes:
 // - application/json
 // produces:
 // - application/json
 // responses:
-//     '200':
-//         schema:
-//           items:
-//                "$ref": "#/definitions/Book"
-//     '500':
-//         error: error description
+//
+//	'200':
+//	    schema:
+//	      items:
+//	           "$ref": "#/definitions/Book"
+//	'500':
+//	    error: error description
 func (handler *BooksHandler) GetBook(ctx *gin.Context) {
 	id := ctx.Param("id")
 
@@ -331,5 +346,5 @@ func (handler *BooksHandler) GetBook(ctx *gin.Context) {
 		}
 	}
 
-	ctx.JSON(http.StatusCreated, book)
+	ctx.JSON(http.StatusOK, book)
 }

@@ -17,6 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+//go:generate moq -out books_moq_test.go . Books
 type Books interface {
 	AddBook(ctx context.Context, book *model.Book) error
 	ListBooks(ctx context.Context) ([]model.Book, error)

@@ -11,7 +11,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-func AuthJWTMiddleware(cfg *viper.Viper) gin.HandlerFunc {
+type Client struct {
+}
+
+func (c Client) AuthJWTMiddleware(cfg *viper.Viper) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		auth := ctx.GetHeader("Authorization")
 		claims := &model.Claims{}
@@ -29,7 +32,7 @@ func AuthJWTMiddleware(cfg *viper.Viper) gin.HandlerFunc {
 	}
 }
 
-func AuthCookieMiddleware() gin.HandlerFunc {
+func (c Client) AuthCookieMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		session := sessions.Default(ctx)
 		username := session.Get("username")
