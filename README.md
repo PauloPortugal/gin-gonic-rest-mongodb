@@ -30,6 +30,11 @@ go run main.go
 docker-compose up
 ```
 
+## How to run audit and tests 
+```shell
+make audit test
+```
+
 ## Swagger OpenAPI specification
 
 * To generate the swagger spec file and have the API spec served from the Swagger UI
@@ -79,7 +84,3 @@ Create a Redis container
 docker pull redis
 docker create --name redis -it -p 6379:6379 redis
 ```
-
-## TODO
-1. Testing
-2. Makefile docs
