@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/datastore"
@@ -19,7 +20,10 @@ func Setup(ctx context.Context, cfg *viper.Viper, router *gin.Engine, pathToTemp
 	authHandler := NewAuthHandler(ctx, cfg, mongoUsersClient, redisBooksClient)
 
 	// API public endpoints
-	cookieStore, _ := redisStore.NewStore(10, "tcp", "localhost:6379", "", []byte(cfg.GetString("redis.sessionSecret")))
+	cookieStore, err := redisStore.NewStore(10, "tcp", "localhost:6379", "", []byte(cfg.GetString("redis.sessionSecret")))
+	if err != nil {
+		panic(fmt.Errorf("error: %w", err))
+	}
 	router.Use(sessions.Sessions("books_api_token", cookieStore))
 	router.POST("/signin", authHandler.SignIn)
 	router.GET("/books", booksHandler.ListBooks)
