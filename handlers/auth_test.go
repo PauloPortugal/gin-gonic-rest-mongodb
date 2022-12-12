@@ -30,6 +30,7 @@ func TestAuthHandler_SignIn(t *testing.T) {
 				}},
 				&redisMock{},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -52,6 +53,7 @@ func TestAuthHandler_SignIn(t *testing.T) {
 				}},
 				&redisMock{},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -76,6 +78,7 @@ func TestAuthHandler_SignIn(t *testing.T) {
 				}},
 				&redisMock{},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -101,6 +104,7 @@ func TestAuthHandler_SignOut(t *testing.T) {
 				&usersMock{},
 				&redisMock{},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)

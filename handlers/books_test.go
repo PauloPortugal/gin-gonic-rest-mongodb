@@ -11,6 +11,9 @@ import (
 	"time"
 
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/model"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
+	redisStore "github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/spf13/viper"
@@ -19,10 +22,13 @@ import (
 
 const pathToTemplates = "../web/templates/*"
 
-func createRouter(booksClientMock *booksMock, usersClientMock *usersMock, redisClientMock *redisMock, m Middleware) *gin.Engine {
+type ClientStoreClientMock struct {
+	sessions.Store
+}
+
+func createRouter(booksClientMock *booksMock, usersClientMock *usersMock, redisClientMock *redisMock, m Middleware, cookieStoreMock CookieStore) *gin.Engine {
 	gin.SetMode(gin.TestMode)
-	router := Setup(context.Background(), viper.GetViper(), gin.New(), pathToTemplates,
-		booksClientMock, usersClientMock, redisClientMock, m)
+	router := Setup(context.Background(), viper.GetViper(), gin.New(), pathToTemplates, booksClientMock, usersClientMock, redisClientMock, m, cookieStoreMock)
 	return router
 }
 
@@ -49,6 +55,18 @@ func mockMiddleware() *MiddlewareMock {
 	}}
 }
 
+func createCookieStore() *CookieStoreMock {
+	return &CookieStoreMock{
+		NewCookieStoreFunc: func() (redisStore.Store, error) {
+			cfg := map[string]string{"key": "value"}
+			b, err := json.Marshal(cfg)
+			if err != nil {
+				return nil, err
+			}
+			return ClientStoreClientMock{cookie.NewStore(b)}, nil
+		}}
+}
+
 func TestBooksHandler_ListBooks(t *testing.T) {
 	var books []model.Book
 	var errorRes map[string]string
@@ -67,6 +85,7 @@ func TestBooksHandler_ListBooks(t *testing.T) {
 					},
 				},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -95,6 +114,7 @@ func TestBooksHandler_ListBooks(t *testing.T) {
 					},
 				},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -126,6 +146,7 @@ func TestBooksHandler_ListBooks(t *testing.T) {
 						&usersMock{},
 						rmock,
 						mockMiddleware(),
+						createCookieStore(),
 					)
 
 					router.ServeHTTP(w, req)
@@ -151,6 +172,7 @@ func TestBooksHandler_ListBooks(t *testing.T) {
 						&usersMock{},
 						rmock,
 						mockMiddleware(),
+						createCookieStore(),
 					)
 
 					router.ServeHTTP(w, req)
@@ -174,6 +196,7 @@ func TestBooksHandler_ListBooks(t *testing.T) {
 					&usersMock{},
 					rmock,
 					mockMiddleware(),
+					createCookieStore(),
 				)
 
 				router.ServeHTTP(w, req)
@@ -209,6 +232,7 @@ func TestBooksHandler_SearchBooks(t *testing.T) {
 				&usersMock{},
 				&redisMock{},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -235,6 +259,7 @@ func TestBooksHandler_SearchBooks(t *testing.T) {
 				&usersMock{},
 				&redisMock{},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -269,6 +294,7 @@ func TestBooksHandler_GetBook(t *testing.T) {
 					},
 				},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -293,6 +319,7 @@ func TestBooksHandler_GetBook(t *testing.T) {
 					},
 				},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -326,6 +353,7 @@ func TestBooksHandler_GetBook(t *testing.T) {
 						&usersMock{},
 						rmock,
 						mockMiddleware(),
+						createCookieStore(),
 					)
 
 					router.ServeHTTP(w, req)
@@ -349,6 +377,7 @@ func TestBooksHandler_GetBook(t *testing.T) {
 						&usersMock{},
 						rmock,
 						mockMiddleware(),
+						createCookieStore(),
 					)
 
 					router.ServeHTTP(w, req)
@@ -372,6 +401,7 @@ func TestBooksHandler_GetBook(t *testing.T) {
 					&usersMock{},
 					rmock,
 					mockMiddleware(),
+					createCookieStore(),
 				)
 
 				router.ServeHTTP(w, req)
@@ -394,6 +424,7 @@ func TestBooksHandler_GetBook(t *testing.T) {
 					&usersMock{},
 					rmock,
 					mockMiddleware(),
+					createCookieStore(),
 				)
 
 				router.ServeHTTP(w, req)
@@ -420,6 +451,7 @@ func TestBooksHandler_DeleteBook(t *testing.T) {
 				&usersMock{},
 				&redisMock{DeleteEntryFunc: func(ctx context.Context, id string) {}},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -440,6 +472,7 @@ func TestBooksHandler_DeleteBook(t *testing.T) {
 				&usersMock{},
 				&redisMock{DeleteEntryFunc: func(ctx context.Context, id string) {}},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -460,6 +493,7 @@ func TestBooksHandler_DeleteBook(t *testing.T) {
 				&usersMock{},
 				&redisMock{},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -494,6 +528,7 @@ func TestBooksHandler_UpdateBook(t *testing.T) {
 				&usersMock{},
 				&redisMock{DeleteEntryFunc: func(ctx context.Context, id string) {}},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -514,6 +549,7 @@ func TestBooksHandler_UpdateBook(t *testing.T) {
 				&usersMock{},
 				&redisMock{},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 			data, _ := json.Marshal("incorrect payload")
 			req, _ := http.NewRequest(http.MethodPut, "/books/some-id", bytes.NewReader(data))
@@ -532,6 +568,7 @@ func TestBooksHandler_UpdateBook(t *testing.T) {
 				&usersMock{},
 				&redisMock{},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -554,6 +591,7 @@ func TestBooksHandler_UpdateBook(t *testing.T) {
 				&usersMock{},
 				&redisMock{},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -588,6 +626,7 @@ func TestBooksHandler_NewBook(t *testing.T) {
 				&usersMock{},
 				&redisMock{DeleteEntryFunc: func(ctx context.Context, id string) {}},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
@@ -608,6 +647,7 @@ func TestBooksHandler_NewBook(t *testing.T) {
 				&usersMock{},
 				&redisMock{},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 			data, _ := json.Marshal("incorrect payload")
 			req, _ := http.NewRequest(http.MethodPost, "/books", bytes.NewReader(data))
@@ -626,6 +666,7 @@ func TestBooksHandler_NewBook(t *testing.T) {
 				&usersMock{},
 				&redisMock{},
 				mockMiddleware(),
+				createCookieStore(),
 			)
 
 			router.ServeHTTP(w, req)
