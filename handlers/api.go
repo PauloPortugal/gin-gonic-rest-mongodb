@@ -9,18 +9,18 @@ import (
 	webHandlers "github.com/PauloPortugal/gin-gonic-rest-mongodb/web/handlers"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
-	redisStore "github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
 
-func Setup(ctx context.Context, cfg *viper.Viper, router *gin.Engine, pathToTemplates string, mongoBooksClient datastore.Books, mongoUsersClient datastore.Users, redisBooksClient datastore.Redis, m Middleware) *gin.Engine {
+func Setup(ctx context.Context, cfg *viper.Viper, router *gin.Engine, pathToTemplates string, mongoBooksClient datastore.Books,
+	mongoUsersClient datastore.Users, redisBooksClient datastore.Redis, m Middleware, cs CookieStore) *gin.Engine {
 
 	booksHandler := NewBooksHandler(ctx, cfg, mongoBooksClient, redisBooksClient)
 	authHandler := NewAuthHandler(ctx, cfg, mongoUsersClient, redisBooksClient)
 
 	// API public endpoints
-	cookieStore, err := redisStore.NewStore(10, "tcp", "localhost:6379", "", []byte(cfg.GetString("redis.sessionSecret")))
+	cookieStore, err := cs.NewCookieStore()
 	if err != nil {
 		panic(fmt.Errorf("error: %w", err))
 	}

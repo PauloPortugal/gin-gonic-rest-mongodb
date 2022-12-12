@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/PauloPortugal/gin-gonic-rest-mongodb/model"
+	redisStore "github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
@@ -36,4 +37,9 @@ type users interface {
 type Middleware interface {
 	AuthJWTMiddleware(cfg *viper.Viper) gin.HandlerFunc
 	AuthCookieMiddleware() gin.HandlerFunc
+}
+
+//go:generate moq -out interfaces_cookie_store_moq_test.go . CookieStore
+type CookieStore interface {
+	NewCookieStore() (redisStore.Store, error)
 }

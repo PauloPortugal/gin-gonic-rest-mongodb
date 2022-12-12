@@ -13,6 +13,7 @@ This is my take on [Building Distributed Applications in Gin](https://github.com
 repository and (a great) book by [Mohamed Labouardy](https://www.labouardy.com/).
 
 **Dependencies used:**
+ * using [go 1.19](https://tip.golang.org/doc/go1.19)
  * using [gin-gonic](https://github.com/gin-gonic/gin#gin-web-framework) v1.7.7 web framework
  * using [viper](https://github.com/spf13/viper) as a configuration solution
  * using [mongo-db](https://www.mongodb.com/) as NoSQL DB

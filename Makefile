@@ -4,7 +4,7 @@ audit:
 
 .PHONY: test
 test:
-	go test --cover -v ./...
+	go clean -testcache && go test --cover -v ./...
 
 .PHONY: local
 local:

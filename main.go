@@ -56,11 +56,13 @@ func main() {
 
 	redisClient := setupRedisClient(ctx, cfg)
 	redisBooksClient := datastore.NewRedisClient(redisClient, cfg)
+
 	m := middleware.Client{}
+	cs := datastore.CookieStoreClient{Config: cfg}
 
 	router := gin.Default()
 
-	if err := handlers.Setup(ctx, cfg, router, pathToTemplates, mongoBooksClient, mongoUsersClient, redisBooksClient, m).Run(); err != nil {
+	if err := handlers.Setup(ctx, cfg, router, pathToTemplates, mongoBooksClient, mongoUsersClient, redisBooksClient, m, cs).Run(); err != nil {
 		return
 	}
 }
